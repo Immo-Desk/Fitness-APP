@@ -1757,7 +1757,38 @@ function renderManage(){
   }
 
   var h=profileCard;
-  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trainingstage</div>';
+
+  h+='<div style="margin-top:4px;padding-top:16px;border-top:1px solid var(--b0)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Darstellung</div>'
+    +'<button id="settings-theme-btn" onclick="toggleTheme()" style="width:100%;padding:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--rs);color:var(--t0);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;margin-bottom:4px">'
+    +(document.body.classList.contains("light")?"☀️ Light Mode aktiv":"🌙 Dark Mode aktiv")
+    +'</button>'
+    +'</div>'
+    +'<div style="padding-top:16px;border-top:1px solid var(--b0)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Benachrichtigungen</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:14px">'
+    +'<div><div style="font-size:13px;font-weight:600;color:var(--t0)">🔔 Push-Benachrichtigungen</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-top:2px">Anfragen & High-Fives</div></div>'
+    +(localStorage.getItem("tp_notif")==="1"
+      ?'<span style="font-size:11px;font-weight:600;color:var(--green)">Aktiv</span>'
+      :'<button onclick="requestNotifPermission()" style="padding:6px 12px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">Aktivieren</button>')
+    +'</div>'
+    +'</div>'
+    +'<div style="padding-top:16px;border-top:1px solid var(--b0)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Gefahrenzone</div>'
+    +'<button onclick="doResetAll()" style="width:100%;padding:13px;background:transparent;border:1px solid rgba(244,63,94,0.4);border-radius:var(--rs);color:var(--coral);font-size:13px;font-family:inherit;cursor:pointer">⚠ Alle Daten & Pläne komplett löschen</button>'
+    +(currentUser?'<button onclick="doLogout(this)" style="width:100%;padding:13px;margin-top:8px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t2);font-size:13px;font-family:inherit;cursor:pointer">🚪 Abmelden</button>':'')
+    +'</div>';
+
+  document.getElementById("page").innerHTML=h;
+}
+function goManageDays(){ manageDayId=null; manageEditId=null; addDayOpen=false; screen="manageDays"; renderApp(); }
+
+function renderManageDays(){
+  /* Wenn Übungen eines Tages geöffnet */
+  if(manageDayId){ renderManageExercises(manageDayId); return; }
+
+  var h='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trainingstage</div>';
 
   for(var oi=0;oi<DORD.length;oi++){
     var did=DORD[oi], ef=getEffDay(did); if(!ef)continue;
@@ -1770,18 +1801,18 @@ function renderManage(){
         +'<div class="field"><label>Beschreibung</label><input id="me-sub" value="'+escHtml(ef.sub||'')+'" placeholder="z.B. Brust · Schulter" autocomplete="off"></div>'
         +'<div style="display:flex;gap:8px;margin-top:4px">'
         +'<button onclick="saveDayCfg(\''+did+'\')" style="flex:1;padding:11px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Speichern</button>'
-        +'<button onclick="manageEditId=null;renderManage()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-family:inherit;cursor:pointer">Abbrechen</button>'
+        +'<button onclick="manageEditId=null;renderManageDays()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-family:inherit;cursor:pointer">Abbrechen</button>'
         +'</div></div>';
     } else {
-      h+='<div class="manage-day-row" style="opacity:'+(isHidden?.45:1)+';border-left-width:4px;border-left-color:'+c.m+';cursor:pointer" onclick="manageDayId=\''+did+'\';renderManage()">'
+      h+='<div class="manage-day-row" style="opacity:'+(isHidden?.45:1)+';border-left-width:4px;border-left-color:'+c.m+';cursor:pointer" onclick="manageDayId=\''+did+'\';renderManageDays()">'
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:14px;font-weight:600;color:var(--t0)">'+escHtml(ef.title)+'</div>'
         +'<div style="font-size:12px;color:var(--t2);margin-top:2px">'+exCount+' Übungen</div></div>'
         +'<div style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">'
-        +(oi>0?'<button class="mc-btn" onclick="moveDayOrder(\''+did+'\',-1)">▲</button>':'')
-        +(oi<DORD.length-1?'<button class="mc-btn" onclick="moveDayOrder(\''+did+'\',1)">▼</button>':'')
-        +'<button class="mc-btn" onclick="toggleDayHide(\''+did+'\')">'+(isHidden?"👁":"🙈")+'</button>'
-        +'<button class="mc-btn" onclick="manageEditId=\''+did+'\';renderManage()">✏</button>'
+        +(oi>0?'<button class="mc-btn" onclick="moveDayOrder(\''+did+'\',-1);renderManageDays()">▲</button>':'')
+        +(oi<DORD.length-1?'<button class="mc-btn" onclick="moveDayOrder(\''+did+'\',1);renderManageDays()">▼</button>':'')
+        +'<button class="mc-btn" onclick="toggleDayHide(\''+did+'\')">'+( isHidden?"👁":"🙈")+'</button>'
+        +'<button class="mc-btn" onclick="manageEditId=\''+did+'\';renderManageDays()">✏</button>'
         +'<button class="mc-btn del" onclick="deleteDay(\''+did+'\')">🗑</button>'
         +'</div></div>';
     }
@@ -1792,42 +1823,21 @@ function renderManage(){
       +'<div class="field"><label>Name</label><input id="nd-title" placeholder="z.B. Push A" autocomplete="off"></div>'
       +'<div class="field"><label>Beschreibung</label><input id="nd-sub" placeholder="z.B. Brust · Schultern" autocomplete="off"></div>'
       +'<div style="display:flex;gap:8px;margin-top:4px">'
-      +'<button onclick="createDay()" style="flex:1;padding:11px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Hinzufügen</button>'
-      +'<button onclick="addDayOpen=false;renderManage()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-family:inherit;cursor:pointer">Abbrechen</button>'
+      +'<button onclick="createDay();renderManageDays()" style="flex:1;padding:11px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Hinzufügen</button>'
+      +'<button onclick="addDayOpen=false;renderManageDays()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-family:inherit;cursor:pointer">Abbrechen</button>'
       +'</div></div>';
   } else {
-    h+='<div class="add-day-card" onclick="addDayOpen=true;renderManage()">+ Neuen Trainingstag hinzufügen</div>';
+    h+='<div class="add-day-card" onclick="addDayOpen=true;renderManageDays()">+ Neuen Trainingstag hinzufügen</div>';
   }
-
-  h+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--b0)">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Darstellung</div>'
-    +'<button id="settings-theme-btn" onclick="toggleTheme()" style="width:100%;padding:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--rs);color:var(--t0);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;margin-bottom:14px">'
-    +(document.body.classList.contains("light")?"☀️ Light Mode aktiv":"🌙 Dark Mode aktiv")
-    +'</button>'
-    +'</div>'
-    +'<div style="padding-top:0;border-top:1px solid var(--b0)">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Benachrichtigungen</div>'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:14px">'
-    +'<div><div style="font-size:13px;font-weight:600;color:var(--t0)">🔔 Push-Benachrichtigungen</div>'
-    +'<div style="font-size:11px;color:var(--t2);margin-top:2px">Anfragen & High-Fives</div></div>'
-    +(localStorage.getItem("tp_notif")==="1"
-      ?'<span style="font-size:11px;font-weight:600;color:var(--green)">Aktiv</span>'
-      :'<button onclick="requestNotifPermission()" style="padding:6px 12px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">Aktivieren</button>')
-    +'</div>'
-    +'</div>'
-    +'<div style="margin-top:6px;padding-top:16px;border-top:1px solid var(--b0)">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Gefahrenzone</div>'
-    +'<button onclick="doResetAll()" style="width:100%;padding:13px;background:transparent;border:1px solid rgba(244,63,94,0.4);border-radius:var(--rs);color:var(--coral);font-size:13px;font-family:inherit;cursor:pointer">⚠ Alle Daten & Pläne komplett löschen</button>'
-    +(currentUser?'<button onclick="doLogout(this)" style="width:100%;padding:13px;margin-top:8px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t2);font-size:13px;font-family:inherit;cursor:pointer">🚪 Abmelden</button>':'')
-    +'</div>';
 
   document.getElementById("page").innerHTML=h;
 }
+
 function renderManageExercises(did){
   var ef=getEffDay(did),c=C[ef.color],list=EX[did]||[];
   /* update header */
   var hl=document.getElementById("hdr-left");
-  if(hl) hl.innerHTML='<button class="back-btn" onclick="manageDayId=null;manageEditExIdx=null;manageAddExOpen=false;renderManage()">‹ Tage</button>'
+  if(hl) hl.innerHTML='<button class="back-btn" onclick="manageDayId=null;manageEditExIdx=null;manageAddExOpen=false;renderManageDays()">‹ Tage</button>'
     +'<div style="font-size:13px;color:var(--t2);margin-top:3px">'+escHtml(ef.title)+' · Übungen</div>';
 
   var h='<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:'+c.hdr+';border:1.5px solid '+c.b+';border-left:4px solid '+c.m+';border-radius:var(--r);margin-bottom:14px">'
@@ -2060,13 +2070,19 @@ function renderPlanSelect(){
   var vd=getVisibleDays();
   var today=new Date().toISOString().slice(0,10);
   var cur=getTmplName();
-  var h='<div onclick="goTemplates()" style="display:flex;align-items:center;gap:12px;padding:12px 15px;background:var(--blue-bg);border:1.5px solid var(--blue-b);border-radius:var(--r);margin-bottom:14px;cursor:pointer">'
+  var h='<div onclick="goTemplates()" style="display:flex;align-items:center;gap:12px;padding:12px 15px;background:var(--blue-bg);border:1.5px solid var(--blue-b);border-radius:var(--r);margin-bottom:10px;cursor:pointer">'
     +'<div style="font-size:22px">📋</div>'
     +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--blue)">Plan wechseln</div>'
     +'<div style="font-size:11px;color:var(--t2);margin-top:1px">'+(cur?'Aktiv: '+escHtml(cur):'6 Vorlagen – Anfänger bis Profi')+'</div></div>'
     +'<div style="font-size:18px;color:var(--blue);opacity:.7">›</div>'
-    +'</div>';
-  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Trainingstage</div>';
+    +'</div>'
+    +'<div onclick="goManageDays()" style="display:flex;align-items:center;gap:12px;padding:12px 15px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:14px;cursor:pointer">'
+    +'<div style="font-size:22px">⚙️</div>'
+    +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t0)">Trainingstage verwalten</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-top:1px">Umbenennen · Übungen bearbeiten · hinzufügen</div></div>'
+    +'<div style="font-size:18px;color:var(--t2);opacity:.5">›</div>'
+    +'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Heute trainieren</div>';
   for(var i=0;i<vd.length;i++){
     var d=vd[i],c=C[d.color];
     var list=EX[d.id]||[];
@@ -2578,6 +2594,14 @@ function renderApp(){
   else if(screen==="manage"){ hl.innerHTML='<button class="back-btn" onclick="goHome()">‹ Zurück</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Einstellungen</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderManage(); }
   else if(screen==="editProfile"){ hl.innerHTML='<button class="back-btn" onclick="goManage()">‹ Einstellungen</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Profil bearbeiten</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderEditProfile(); }
   else if(screen==="templates"){ hl.innerHTML=''; document.getElementById("tabs-wrap").innerHTML=""; renderTemplates(); }
+  else if(screen==="manageDays"){
+    if(manageDayId){
+      hl.innerHTML='<button class="back-btn" onclick="manageDayId=null;manageEditExIdx=null;manageAddExOpen=false;renderManageDays()">‹ Tage</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Übungen</div>';
+    } else {
+      hl.innerHTML='<button class="back-btn" onclick="goPlan()">‹ Training</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Trainingstage</div>';
+    }
+    document.getElementById("tabs-wrap").innerHTML=""; renderManageDays();
+  }
   renderBottomNav();
   window.scrollTo({top:0,behavior:"smooth"});
 }
