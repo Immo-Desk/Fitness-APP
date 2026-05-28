@@ -320,6 +320,21 @@ body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); col
 <canvas id="cnf" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:none"></canvas>
 <div id="cel" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:998;pointer-events:none;display:none;flex-direction:column;align-items:center;justify-content:center;transition:opacity .7s"></div>
 <div id="cal-detail-ov" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:980;background:rgba(0,0,0,0.78);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box"></div>
+<div id="rankup-ov" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .4s;text-align:center;padding:24px">
+  <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px">Rang-Aufstieg! 🎉</div>
+  <div class="ru-icon" style="font-size:80px;line-height:1;margin-bottom:16px"></div>
+  <div class="ru-name" style="font-size:36px;font-weight:800;color:var(--t0);letter-spacing:-.5px"></div>
+  <div style="font-size:14px;color:var(--t2);margin-top:8px">Glückwunsch – du bist aufgestiegen!</div>
+</div>
+<div id="ach-ov" style="display:none;position:fixed;bottom:100px;left:16px;right:16px;z-index:8000;background:var(--bg2);border:1.5px solid var(--blue-b);border-radius:var(--r);padding:16px;flex-direction:row;align-items:center;gap:14px;opacity:0;transform:translateY(30px);transition:opacity .3s,transform .3s;box-shadow:0 8px 32px rgba(0,0,0,0.6)">
+  <div class="ach-ov-icon" style="font-size:36px;flex-shrink:0"></div>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Erfolg freigeschaltet!</div>
+    <div class="ach-ov-title" style="font-size:15px;font-weight:700;color:var(--t0)"></div>
+    <div class="ach-ov-desc" style="font-size:12px;color:var(--t2);margin-top:2px"></div>
+  </div>
+  <div class="ach-ov-pts" style="font-size:12px;font-weight:700;color:var(--blue);flex-shrink:0"></div>
+</div>
 <div id="hint-ov" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:990;background:rgba(0,0,0,0.82);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;box-sizing:border-box"></div>
 <div id="timer-bar" style="position:fixed;bottom:calc(68px + env(safe-area-inset-bottom));left:16px;right:16px;z-index:300;display:none;background:var(--bg3);border:1.5px solid var(--blue-b);border-radius:var(--r);padding:12px 16px;box-shadow:0 4px 24px rgba(0,0,30,0.85)">
   <div style="display:flex;align-items:center;gap:12px">
@@ -339,7 +354,7 @@ body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); col
     <div class="hdr-left" id="hdr-left">
       <div class="hdr-h1" id="hdr-title">Trainingsplan</div>
     </div>
-    <div class="hdr-actions">
+    <div class="hdr-actions" id="hdr-right">
       <div class="toast" id="toast">✓</div>
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
     </div>
@@ -1306,7 +1321,7 @@ function loadAll(){
   function ld(k,def){try{return JSON.parse(localStorage.getItem(k)||"null")||def;}catch(e){return def;}}
   W=ld(SK_W,{}); PR=ld(SK_PR,{}); EX=ld(SK_EX,{}); HIST=ld(SK_HIST,{});
   BW=ld(SK_BW,[]); SESSIONS=ld(SK_SESS,[]); DCFG=ld(SK_DCFG,{}); DORD=ld(SK_DORD,[]);
-  CDAYS=ld(SK_CDAYS,[]); SETLOG=ld(SK_SETLOG,{});
+  CDAYS=ld(SK_CDAYS,[]); SETLOG=ld(SK_SETLOG,{}); UNLOCKED_ACH=ld(SK_ACH,[]);
   var th=localStorage.getItem(SK_THEME);
   if(th==="light") document.body.classList.add("light");
   updateThemeBtn();
@@ -1491,17 +1506,16 @@ function launchConfetti(){
 
 function logSession(){
   var ef=getEffDay(active),today=new Date().toISOString().slice(0,10);
+  var oldPts=getPoints();
   SESSIONS=SESSIONS.filter(function(s){return!(s.d===today&&s.did===active);});
   var sess={d:today,did:active,title:ef.title,color:ef.color};
   SESSIONS.push(sess);
   sv(SK_SESS,SESSIONS);
-  /* Firestore-Sync: Training für den Feed speichern */
   if(currentUser){
-    try{
-      db.collection("users").doc(currentUser.uid).collection("sessions")
-        .doc(today+"_"+active).set(sess).catch(function(){});
-    }catch(e){}
+    try{db.collection("users").doc(currentUser.uid).collection("sessions").doc(today+"_"+active).set(sess).catch(function(){});}catch(e){}
   }
+  checkRankUp(oldPts);
+  setTimeout(function(){checkAchievements();},3000);
   launchConfetti();
   toast("✓ Training gespeichert!");
   setTimeout(function(){CHK={};SESSION_SETS={};expandedEx=null;screen="home";renderApp();},2800);
@@ -1635,15 +1649,39 @@ function renderHome(){
 
   var nc=nextDay?C[nextDay.color]:C.blue;
   var streakFlames=streak===0?"":streak<3?"🔥":streak<8?"🔥🔥":"🔥🔥🔥";
+  var lv=getLevel();
+  var ev=getSeasonEvent();
+  var evSc=C[ev.color]||C.blue;
+  var evPct=Math.min(100,Math.round(ev.progress/ev.target*100));
   var h='';
 
   /* 1 ── Rank ring */
   h+=buildRankRing();
 
-  /* 2 ── Week strip – tappable → Kalender */
-  h+='<div class="week-strip" onclick="goStatsCal()" style="margin-bottom:12px;cursor:pointer"><div class="week-title" style="display:flex;align-items:center;justify-content:space-between">Diese Woche · '+wSess.length+' Training'+(wSess.length!==1?"s":"")+'<span style="font-size:11px;color:var(--t2);opacity:.7">Kalender ›</span></div>'+weekDots+'</div>';
+  /* 2 ── Level badge */
+  h+='<div onclick="setStatTab(\'ach\');goStats()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:12px;cursor:pointer">'
+    +'<div style="width:36px;height:36px;border-radius:10px;background:'+lv.color+'22;border:1.5px solid '+lv.color+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+lv.icon+'</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--t0)">Level '+lv.num+' · '+lv.name+'</div>'
+    +'<div style="background:var(--bg3);border-radius:99px;height:4px;margin-top:5px;overflow:hidden">'
+    +'<div style="background:'+lv.color+';height:100%;width:'+getLevelProgress()+'%;border-radius:99px"></div>'
+    +'</div></div>'
+    +'<div style="font-size:11px;color:var(--t2)">'+SESSIONS.length+' Trainings</div>'
+    +'</div>';
 
-  /* 3 ── Streak (left) + Als nächstes / Schnellstart (right) */
+  /* 3 ── Seasonal event */
+  h+='<div onclick="setStatTab(\'ach\');goStats()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid '+evSc.b+';border-left:3px solid '+evSc.m+';border-radius:var(--r);margin-bottom:12px;cursor:pointer">'
+    +'<div style="font-size:22px">'+ev.icon+'</div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:12px;font-weight:700;color:'+evSc.m+'">'+ev.name+'</div>'
+    +'<div style="background:var(--bg3);border-radius:99px;height:4px;margin-top:4px;overflow:hidden">'
+    +'<div style="background:'+evSc.m+';height:100%;width:'+evPct+'%;border-radius:99px"></div>'
+    +'</div></div>'
+    +'<div style="font-size:13px;font-weight:700;color:'+evSc.m+';flex-shrink:0">'+ev.progress+'/'+ev.target+'</div>'
+    +'</div>';
+
+  /* 4 ── Week strip */
+  h+='<div class="week-strip" onclick="goStatsCal()" style="margin-bottom:12px;cursor:pointer"><div class="week-title" style="display:flex;align-items:center;justify-content:space-between">Diese Woche · '+wSess.length+' Training'+(wSess.length!==1?"s":"")+'<span style="font-size:11px;color:var(--t2);opacity:.7">Kalender ›</span></div>'+weekDots+'</div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">';
 
   /* Streak */
@@ -1761,6 +1799,16 @@ function renderManage(){
   }
 
   h+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--b0)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Benachrichtigungen</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:14px">'
+    +'<div><div style="font-size:13px;font-weight:600;color:var(--t0)">🔔 Push-Benachrichtigungen</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-top:2px">Anfragen & High-Fives</div></div>'
+    +(localStorage.getItem("tp_notif")==="1"
+      ?'<span style="font-size:11px;font-weight:600;color:var(--green)">Aktiv</span>'
+      :'<button onclick="requestNotifPermission()" style="padding:6px 12px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">Aktivieren</button>')
+    +'</div>'
+    +'</div>'
+    +'<div style="margin-top:6px;padding-top:16px;border-top:1px solid var(--b0)">'
     +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Gefahrenzone</div>'
     +'<button onclick="doResetAll()" style="width:100%;padding:13px;background:transparent;border:1px solid rgba(244,63,94,0.4);border-radius:var(--rs);color:var(--coral);font-size:13px;font-family:inherit;cursor:pointer">⚠ Alle Daten & Pläne komplett löschen</button>'
     +(currentUser?'<button onclick="doLogout(this)" style="width:100%;padding:13px;margin-top:8px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t2);font-size:13px;font-family:inherit;cursor:pointer">🚪 Abmelden</button>':'')
@@ -2134,8 +2182,8 @@ function renderPlan(){
 /* ═══ STATS ═══ */
 function renderStats(){
   var tabs='<div class="stat-tabs">'
-    +['cal','bw','prog','pr','orm'].map(function(t){
-      var labels={cal:"📅 Kalender",bw:"⚖️ Gewicht",prog:"📈 Fortschritt",pr:"🏆 PRs",orm:"⚡ 1RM"};
+    +['cal','bw','prog','pr','orm','ach'].map(function(t){
+      var labels={cal:"📅 Kalender",bw:"⚖️ Gewicht",prog:"📈 Fortschritt",pr:"🏆 PRs",orm:"⚡ 1RM",ach:"🎖️ Erfolge"};
       return'<button class="stat-tab'+(statTab===t?" on":"")+'" onclick="setStatTab(\''+t+'\')">'+labels[t]+'</button>';
     }).join("")+'</div>';
   var body="";
@@ -2144,6 +2192,7 @@ function renderStats(){
   if(statTab==="prog") body=renderProg();
   if(statTab==="pr")   body=renderPRBoard();
   if(statTab==="orm")  body=renderORM();
+  if(statTab==="ach")  {document.getElementById("page").innerHTML=tabs;renderAchievements();return;}
   document.getElementById("page").innerHTML=tabs+body;
 }
 
@@ -2295,7 +2344,193 @@ function renderORM(){
   return h;
 }
 
-/* ═══ NAVIGATION ═══ */
+/* ═══ ACHIEVEMENTS & LEVELS ═══ */
+var SK_ACH="tp_ach7";
+var UNLOCKED_ACH=[];
+
+var ACHIEVEMENTS=[
+  {id:"a01",icon:"👟",title:"Erster Schritt",     desc:"Erstes Training abgeschlossen",      pts:50,  check:function(){return SESSIONS.length>=1;}},
+  {id:"a02",icon:"💪",title:"Eiserne Disziplin",  desc:"10 Trainings abgeschlossen",          pts:100, check:function(){return SESSIONS.length>=10;}},
+  {id:"a03",icon:"🔥",title:"Auf Feuer",           desc:"50 Trainings abgeschlossen",          pts:250, check:function(){return SESSIONS.length>=50;}},
+  {id:"a04",icon:"💎",title:"Legende",             desc:"100 Trainings abgeschlossen",         pts:500, check:function(){return SESSIONS.length>=100;}},
+  {id:"a05",icon:"⚡",title:"Wochenheld",          desc:"3 Trainings in einer Woche",          pts:75,  check:function(){return sessThisWeek().length>=3;}},
+  {id:"a06",icon:"🏆",title:"Monatsmeister",       desc:"10 Trainings in einem Monat",         pts:150, check:function(){var m=new Date().toISOString().slice(0,7);return SESSIONS.filter(function(s){return s.d&&s.d.startsWith(m);}).length>=10;}},
+  {id:"a07",icon:"🎯",title:"PR-Jäger",            desc:"Ersten persönlichen Rekord gesetzt",  pts:100, check:function(){return Object.keys(PR).length>0;}},
+  {id:"a08",icon:"🔗",title:"Auf Kurs",            desc:"2 Wochen Streak",                     pts:80,  check:function(){return getStreak()>=2;}},
+  {id:"a09",icon:"⛓️",title:"Unaufhaltbar",        desc:"4 Wochen Streak",                     pts:200, check:function(){return getStreak()>=4;}},
+  {id:"a10",icon:"🥇",title:"Gold-Kämpfer",        desc:"Gold-Rang erreicht",                  pts:160, check:function(){return getPoints()>=160;}},
+  {id:"a11",icon:"🔷",title:"Platin-Elite",        desc:"Platin-Rang erreicht",                pts:230, check:function(){return getPoints()>=230;}},
+  {id:"a12",icon:"💠",title:"Diamant-Krieger",     desc:"Diamant-Rang erreicht",               pts:290, check:function(){return getPoints()>=290;}},
+];
+
+var LEVELS=[
+  {num:1,name:"Anfänger", icon:"🌱",min:0,   max:9,   color:"#9a9a9a"},
+  {num:2,name:"Trainee",  icon:"💪",min:10,  max:24,  color:"#a3e635"},
+  {num:3,name:"Athlet",   icon:"⚡",min:25,  max:49,  color:"#34d399"},
+  {num:4,name:"Champion", icon:"🏆",min:50,  max:99,  color:"#f59e0b"},
+  {num:5,name:"Elite",    icon:"🔥",min:100, max:199, color:"#f43f5e"},
+  {num:6,name:"Legende",  icon:"💎",min:200, max:9999,color:"#a78bfa"},
+];
+
+function getLevel(){
+  var t=SESSIONS.length;
+  for(var i=LEVELS.length-1;i>=0;i--){if(t>=LEVELS[i].min)return LEVELS[i];}
+  return LEVELS[0];
+}
+function getLevelProgress(){
+  var lv=getLevel(),t=SESSIONS.length;
+  if(lv.max===9999)return 100;
+  return Math.round((t-lv.min)/(lv.max-lv.min+1)*100);
+}
+
+function checkAchievements(){
+  var prev=UNLOCKED_ACH.slice();
+  ACHIEVEMENTS.forEach(function(a){
+    if(!UNLOCKED_ACH.includes(a.id)&&a.check()){
+      UNLOCKED_ACH.push(a.id);
+      showAchievementUnlock(a);
+    }
+  });
+  if(UNLOCKED_ACH.length!==prev.length)sv(SK_ACH,UNLOCKED_ACH);
+}
+
+function showAchievementUnlock(a){
+  var ov=document.getElementById("ach-ov");if(!ov)return;
+  ov.querySelector(".ach-ov-icon").textContent=a.icon;
+  ov.querySelector(".ach-ov-title").textContent=a.title;
+  ov.querySelector(".ach-ov-desc").textContent=a.desc;
+  ov.querySelector(".ach-ov-pts").textContent="+"+a.pts+" Punkte";
+  ov.style.display="flex";
+  setTimeout(function(){ov.style.opacity="1";ov.style.transform="translateY(0)";},30);
+  setTimeout(function(){
+    ov.style.opacity="0";ov.style.transform="translateY(30px)";
+    setTimeout(function(){ov.style.display="none";},400);
+  },3200);
+}
+
+/* ═══ SEASONAL EVENTS ═══ */
+function getSeasonEvent(){
+  var now=new Date(),m=now.getMonth();
+  var prefix=now.getFullYear()+"-"+String(m+1).padStart(2,"0");
+  var progress=SESSIONS.filter(function(s){return s.d&&s.d.startsWith(prefix);}).length;
+  var events=[
+    {name:"Winter Challenge", icon:"❄️",color:"teal", target:12},
+    {name:"Winter Challenge", icon:"❄️",color:"teal", target:12},
+    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
+    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
+    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
+    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
+    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
+    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
+    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
+    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
+    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
+    {name:"Winter Challenge",  icon:"❄️",color:"teal", target:12},
+  ];
+  return Object.assign({},events[m],{progress:progress});
+}
+
+/* ═══ RANK-UP ANIMATION ═══ */
+function checkRankUp(oldPts){
+  var newPts=getPoints();
+  var oldR=getCurRank(oldPts),newR=getCurRank(newPts);
+  if(newR.name!==oldR.name)setTimeout(function(){showRankUpAnimation(newR);},2500);
+}
+
+function showRankUpAnimation(rank){
+  var ov=document.getElementById("rankup-ov");if(!ov)return;
+  ov.querySelector(".ru-icon").textContent=rank.icon;
+  ov.querySelector(".ru-name").textContent=rank.name;
+  ov.style.display="flex";
+  setTimeout(function(){ov.style.opacity="1";},30);
+  launchConfetti();
+  setTimeout(function(){
+    ov.style.opacity="0";
+    setTimeout(function(){ov.style.display="none";},600);
+  },4000);
+}
+
+/* ═══ PUSH NOTIFICATIONS ═══ */
+var _lastNotifCheck=0;
+
+function requestNotifPermission(){
+  if(!("Notification" in window)){toast("Browser unterstützt keine Benachrichtigungen");return;}
+  Notification.requestPermission().then(function(p){
+    if(p==="granted"){localStorage.setItem("tp_notif","1");toast("🔔 Benachrichtigungen aktiviert");}
+    else toast("Benachrichtigungen abgelehnt");
+  });
+}
+
+function sendLocalNotif(title,body){
+  if(!("Notification" in window)||Notification.permission!=="granted")return;
+  try{new Notification(title,{body:body,icon:"https://emojicdn.elk.sh/💪"});}catch(e){}
+}
+
+function pollNotifications(){
+  if(!currentUser||Date.now()-_lastNotifCheck<180000)return;
+  _lastNotifCheck=Date.now();
+  db.collection("friendRequests").where("to","==",currentUser.uid).where("status","==","pending").get().then(function(snap){
+    var newCount=snap.docs.length;
+    if(newCount>pendingRequests.length&&localStorage.getItem("tp_notif")==="1"){
+      sendLocalNotif("TrainingApp 💪","Du hast "+(newCount-pendingRequests.length)+" neue Freundschaftsanfrage"+( newCount-pendingRequests.length>1?"n":"")+"!");
+    }
+    pendingRequests=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    renderBottomNav();
+  }).catch(function(){});
+}
+
+function renderAchievements(){
+  var pg=document.getElementById("page");if(!pg)return;
+  var lv=getLevel(),lvProg=getLevelProgress();
+  var h='';
+
+  /* Level Card */
+  h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:0 4px 20px rgba(0,0,0,0.5)">'
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'
+    +'<div style="width:56px;height:56px;border-radius:14px;background:'+lv.color+'22;border:2px solid '+lv.color+';display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">'+lv.icon+'</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Level '+lv.num+'</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--t0);letter-spacing:-.4px">'+lv.name+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-top:2px">'+SESSIONS.length+' Trainings gesamt</div>'
+    +'</div></div>'
+    +'<div style="background:var(--bg3);border-radius:99px;height:8px;overflow:hidden">'
+    +'<div style="background:'+lv.color+';height:100%;width:'+lvProg+'%;border-radius:99px;transition:width .6s"></div>'
+    +'</div>'
+    +(lv.max<9999?'<div style="font-size:11px;color:var(--t2);margin-top:6px;text-align:right">'+SESSIONS.length+' / '+( lv.max+1)+' für Level '+(lv.num+1)+'</div>':'<div style="font-size:11px;color:'+lv.color+';margin-top:6px;text-align:right;font-weight:600">Maximales Level erreicht 🎉</div>')
+    +'</div>';
+
+  /* Saisonales Event */
+  var ev=getSeasonEvent();
+  var sc=C[ev.color]||C.blue;
+  var evPct=Math.min(100,Math.round(ev.progress/ev.target*100));
+  h+='<div style="background:var(--bg2);border:1px solid '+sc.b+';border-left:4px solid '+sc.m+';border-radius:var(--r);padding:14px;margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+    +'<div style="font-size:24px">'+ev.icon+'</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:14px;font-weight:700;color:var(--t0)">'+ev.name+'</div>'
+    +'<div style="font-size:12px;color:var(--t2)">'+ev.progress+' / '+ev.target+' Trainings diesen Monat</div>'
+    +'</div>'
+    +(evPct>=100?'<div style="font-size:20px">✅</div>':'<div style="font-size:13px;font-weight:700;color:'+sc.m+'">'+evPct+'%</div>')
+    +'</div>'
+    +'<div style="background:var(--bg3);border-radius:99px;height:6px;overflow:hidden">'
+    +'<div style="background:'+sc.m+';height:100%;width:'+evPct+'%;border-radius:99px;transition:width .6s"></div>'
+    +'</div></div>';
+
+  /* Achievements Grid */
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Erfolge ('+UNLOCKED_ACH.length+'/'+ACHIEVEMENTS.length+')</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  ACHIEVEMENTS.forEach(function(a){
+    var unlocked=UNLOCKED_ACH.includes(a.id);
+    h+='<div style="background:var(--bg2);border:1px solid '+(unlocked?"var(--blue-b)":"var(--b0)")+';border-radius:var(--r);padding:12px;opacity:'+(unlocked?1:.45)+'">'
+      +'<div style="font-size:28px;margin-bottom:6px">'+a.icon+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:'+(unlocked?"var(--blue)":"var(--t0)")+'">'+a.title+'</div>'
+      +'<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4">'+a.desc+'</div>'
+      +(unlocked?'<div style="font-size:10px;font-weight:600;color:var(--blue);margin-top:6px">✓ Freigeschaltet</div>':'')
+      +'</div>';
+  });
+  h+='</div>';
+  pg.innerHTML=h;
+}
 function renderApp(){
   var hl=document.getElementById("hdr-left");
   var page=document.getElementById("page");
@@ -2756,31 +2991,11 @@ try{ if(window.screen&&screen.orientation&&screen.orientation.lock)screen.orient
 (function(){
   var sx=0,sy=0;
   var MAIN=["home","planSelect","friends","stats","manage"];
-  var FRIEND_TABS=["feed","ranking","friends","search"];
   document.addEventListener("touchstart",function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
   document.addEventListener("touchend",function(e){
     var dx=e.changedTouches[0].clientX-sx;
     var dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dy)>Math.abs(dx)||Math.abs(dx)<75)return;
-
-    /* Swipe innerhalb des Friends-Screens → Sub-Tabs wechseln */
-    if(screen==="friends"){
-      var fi=FRIEND_TABS.indexOf(friendsTab);
-      if(dx<0&&fi<FRIEND_TABS.length-1){
-        friendsTab=FRIEND_TABS[fi+1];
-        if(friendsTab==="feed")loadFeed();
-        if(friendsTab==="ranking")loadRanking();
-        renderFriends();
-      } else if(dx>0&&fi>0){
-        friendsTab=FRIEND_TABS[fi-1];
-        if(friendsTab==="feed")loadFeed();
-        if(friendsTab==="ranking")loadRanking();
-        renderFriends();
-      }
-      return;
-    }
-
-    /* Swipe zwischen Haupt-Screens */
     var cur=(screen==="plan"||screen==="exDetail")?"planSelect":screen;
     var idx=MAIN.indexOf(cur);
     if(idx===-1)return;
@@ -2801,6 +3016,9 @@ try{ if(window.screen&&screen.orientation&&screen.orientation.lock)screen.orient
 })();
 
 loadAll();
+/* Notification polling alle 3 Min wenn App offen */
+setInterval(pollNotifications, 180000);
+document.addEventListener("visibilitychange",function(){if(!document.hidden)pollNotifications();});
 fAuth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
