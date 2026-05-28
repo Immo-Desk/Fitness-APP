@@ -2476,7 +2476,15 @@ function doLogin(){
     authLoading=false;
     var hdrEl=document.getElementById("hdr"),navEl=document.getElementById("bottom-nav");
     if(hdrEl)hdrEl.style.display="";if(navEl)navEl.style.display="";
-    screen="home";renderApp();
+    if(!userProfile){
+      /* Kein Profil in Firestore – neues anlegen */
+      userProfile={uid:currentUser.uid,username:"",displayName:"",avatarEmoji:"💪",avatarColor:"#a3e635",email:currentUser.email||"",privacy:{visibility:"friends",showWeights:true}};
+      selAvatarE="💪"; selAvatarC="#a3e635"; _epVis="friends"; _epWeights=true;
+      screen="editProfile"; renderApp();
+      toast("Bitte Profil einrichten 👋");
+    } else {
+      screen="home"; renderApp();
+    }
   }).catch(function(err){authLoading=false;authError=getAuthError((err&&err.code)||"");renderAuth();});
 }
 function doLogout(btn){
@@ -2632,7 +2640,7 @@ function toggleWeightsVis(){
 
 function saveProfile(){
   if(!currentUser||!userProfile)return;
-  var name=((document.getElementById("ep-name")||{}).value||"").trim()||userProfile.username;
+  var name=((document.getElementById("ep-name")||{}).value||"").trim()||userProfile.username||"";
   var bio=((document.getElementById("ep-bio")||{}).value||"").trim();
   var goal=((document.getElementById("ep-goal")||{}).value)||"";
   var wclass=((document.getElementById("ep-wclass")||{}).value)||"";
@@ -2640,17 +2648,31 @@ function saveProfile(){
   var updates={
     displayName:name, bio:bio, goal:goal, weightClass:wclass,
     avatarEmoji:selAvatarE, avatarColor:selAvatarC,
+    uid:currentUser.uid,
+    username:userProfile.username||"",
+    email:currentUser.email||"",
     privacy:{visibility:vis, showWeights:_epWeights}
   };
-  db.collection("users").doc(currentUser.uid).update(updates).then(function(){
+  /* set+merge statt update – funktioniert auch wenn Dokument nicht existiert */
+  db.collection("users").doc(currentUser.uid).set(updates,{merge:true}).then(function(){
+    /* Benutzername-Mapping sicherstellen */
+    if(userProfile.username){
+      db.collection("usernames").doc(userProfile.username).set({uid:currentUser.uid},{merge:true}).catch(function(){});
+    }
     Object.assign(userProfile,updates);
     delete userProfile._tmpVis;
-    /* Update avatar in header */
+    saveProfileLocal(userProfile);
     var av=document.querySelector(".hdr-avatar");
     if(av){av.style.background=selAvatarC;av.textContent=selAvatarE;}
     toast("✓ Profil gespeichert");
     goManage();
-  }).catch(function(e){toast("Fehler: "+e.message);});
+  }).catch(function(e){
+    /* Firestore fehlgeschlagen → lokal speichern */
+    Object.assign(userProfile,updates);
+    saveProfileLocal(userProfile);
+    toast("✓ Lokal gespeichert");
+    goManage();
+  });
 }
 
 function deleteAccount(btn){
