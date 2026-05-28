@@ -356,7 +356,7 @@ body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); col
     </div>
     <div class="hdr-actions" id="hdr-right">
       <div class="toast" id="toast">✓</div>
-      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+      <button id="avatar-btn" onclick="goManage()" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--bg3);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"></button>
     </div>
   </div>
 </div>
@@ -1348,8 +1348,9 @@ function toggleTheme(){
   updateThemeBtn();
 }
 function updateThemeBtn(){
-  var b=document.getElementById("theme-btn");
-  if(b) b.textContent=document.body.classList.contains("light")?"🌙":"☀️";
+  /* Theme-Button wurde in Einstellungen verschoben – kein Header-Update nötig */
+  var tb=document.getElementById("settings-theme-btn");
+  if(tb){var light=document.body.classList.contains("light");tb.textContent=light?"☀️ Light Mode aktiv":"🌙 Dark Mode aktiv";}
 }
 
 /* ═══ DAY HELPERS ═══ */
@@ -1799,6 +1800,12 @@ function renderManage(){
   }
 
   h+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--b0)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Darstellung</div>'
+    +'<button id="settings-theme-btn" onclick="toggleTheme()" style="width:100%;padding:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--rs);color:var(--t0);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;margin-bottom:14px">'
+    +(document.body.classList.contains("light")?"☀️ Light Mode aktiv":"🌙 Dark Mode aktiv")
+    +'</button>'
+    +'</div>'
+    +'<div style="padding-top:0;border-top:1px solid var(--b0)">'
     +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Benachrichtigungen</div>'
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);margin-bottom:14px">'
     +'<div><div style="font-size:13px;font-weight:600;color:var(--t0)">🔔 Push-Benachrichtigungen</div>'
@@ -2535,19 +2542,19 @@ function renderApp(){
   var hl=document.getElementById("hdr-left");
   var page=document.getElementById("page");
   if(page)page.style.overflowY=(screen==="home")?"hidden":"";
-  /* show/restore header+nav (hidden on auth screen) */
+  /* show/restore header+nav */
   var hdrEl=document.getElementById("hdr"),navEl=document.getElementById("bottom-nav");
   if(hdrEl)hdrEl.style.display="";if(navEl)navEl.style.display="";
-  /* avatar in header */
-  var hdrRight=document.getElementById("hdr-right");
-  if(hdrRight&&userProfile){
-    var av=hdrRight.querySelector(".hdr-avatar");
-    if(!av){
-      av=document.createElement("div");
-      av.className="hdr-avatar";
-      av.style.cssText="width:30px;height:30px;border-radius:50%;background:"+escHtml(userProfile.avatarColor||"#7b8cff")+";display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:6px;flex-shrink:0";
-      av.textContent=userProfile.avatarEmoji||"💪";
-      hdrRight.insertBefore(av,hdrRight.firstChild);
+  /* Avatar-Button aktualisieren */
+  var avBtn=document.getElementById("avatar-btn");
+  if(avBtn){
+    if(userProfile){
+      avBtn.style.background=userProfile.avatarColor||"#a3e635";
+      avBtn.textContent=userProfile.avatarEmoji||"💪";
+      avBtn.title=userProfile.displayName||userProfile.username||"Profil";
+    } else {
+      avBtn.style.background="var(--bg3)";
+      avBtn.textContent="👤";
     }
   }
   if(screen==="home"){
@@ -2558,7 +2565,14 @@ function renderApp(){
   else if(screen==="planSelect"){ hl.innerHTML='<button class="back-btn" onclick="goHome()">‹ Zurück</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Training wählen</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderPlanSelect(); }
   else if(screen==="plan"){ hl.innerHTML='<button class="back-btn" onclick="goPlan()">‹ Auswahl</button>'; renderPlanTabs(); renderPlan(); }
   else if(screen==="exDetail"){ hl.innerHTML=''; document.getElementById("tabs-wrap").innerHTML=""; renderExDetail(); }
-  else if(screen==="stats"){ hl.innerHTML='<button class="back-btn" onclick="goHome()">‹ Zurück</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Statistiken</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderStats(); }
+  else if(screen==="stats"){
+    /* Zurück: bei ach-Tab → zurück zum cal-Tab; sonst → Home */
+    var statsBack=statTab==="ach"
+      ?'<button class="back-btn" onclick="setStatTab(\'cal\')">‹ Statistiken</button>'
+      :'<button class="back-btn" onclick="goHome()">‹ Zurück</button>';
+    hl.innerHTML=statsBack+'<div style="font-size:13px;color:var(--t2);margin-top:3px">Statistiken</div>';
+    document.getElementById("tabs-wrap").innerHTML=""; renderStats();
+  }
   else if(screen==="friends"){ hl.innerHTML='<div class="hdr-h1">Freunde</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderFriends(); }
   else if(screen==="calDetail"){ hl.innerHTML=''; document.getElementById("tabs-wrap").innerHTML=""; renderCalDetail(); }
   else if(screen==="manage"){ hl.innerHTML='<button class="back-btn" onclick="goHome()">‹ Zurück</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Einstellungen</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderManage(); }
