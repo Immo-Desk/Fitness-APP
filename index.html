@@ -2350,9 +2350,11 @@ function goFriends(){ screen="friends"; friendsLoaded=false; feedLoaded=false; r
 function goEditProfile(){
   if(userProfile){
     selAvatarE=userProfile.avatarEmoji||"💪";
-    selAvatarC=userProfile.avatarColor||"#7b8cff";
+    selAvatarC=userProfile.avatarColor||"#a3e635";
     _epVis=(userProfile.privacy&&userProfile.privacy.visibility)||"friends";
     _epWeights=(userProfile.privacy&&userProfile.privacy.showWeights!==false);
+    delete userProfile._fn; delete userProfile._fb;
+    delete userProfile._fg; delete userProfile._fw; delete userProfile._fu;
   }
   screen="editProfile"; renderApp();
 }
@@ -2363,8 +2365,30 @@ function toggleEdit(){ editMode=!editMode; if(!editMode)addOpen=false; renderPla
 
 /* ═══ INIT ═══ */
 /* ═══ AUTH FUNCTIONS ═══ */
-function pickAvatarEmoji(e){selAvatarE=e;renderAuth();}
-function pickAvatarColor(c){selAvatarC=c;renderAuth();}
+function saveEditFormState(){
+  /* Aktuelle Eingaben zwischenspeichern bevor neu gerendert wird */
+  if(!userProfile)return;
+  var n=document.getElementById("ep-name"),
+      b=document.getElementById("ep-bio"),
+      g=document.getElementById("ep-goal"),
+      w=document.getElementById("ep-wclass"),
+      u=document.getElementById("ep-username");
+  if(n)userProfile._fn=n.value;
+  if(b)userProfile._fb=b.value;
+  if(g)userProfile._fg=g.value;
+  if(w)userProfile._fw=w.value;
+  if(u)userProfile._fu=u.value;
+}
+function pickAvatarEmoji(e){
+  selAvatarE=e;
+  if(screen==="editProfile"){saveEditFormState();renderEditProfile();}
+  else renderAuth();
+}
+function pickAvatarColor(c){
+  selAvatarC=c;
+  if(screen==="editProfile"){saveEditFormState();renderEditProfile();}
+  else renderAuth();
+}
 
 function renderAuth(){
   var hdrEl=document.getElementById("hdr"),navEl=document.getElementById("bottom-nav"),pg=document.getElementById("page");
@@ -2566,13 +2590,13 @@ function renderEditProfile(){
       ?'<div class="field"><label>Benutzername <span style="color:var(--coral);font-weight:700">*</span></label><input id="ep-username" type="text" placeholder="z.B. lukas_fitness" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" maxlength="30" style="border-color:var(--blue-b)"><div style="font-size:11px;color:var(--t2);margin-top:4px">Nur Buchstaben, Zahlen und _ · Kann nicht geändert werden</div></div>'
       :'<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--rs);margin-bottom:12px"><div style="font-size:22px">'+escHtml(p.avatarEmoji||"💪")+'</div><div><div style="font-size:13px;font-weight:700;color:var(--t0)">@'+escHtml(p.username)+'</div><div style="font-size:11px;color:var(--t2)">Benutzername kann nicht geändert werden</div></div></div>'
     )
-    +'<div class="field"><label>Anzeigename</label><input id="ep-name" type="text" value="'+escHtml(p.displayName||p.username||"")+'" autocomplete="off" maxlength="30"></div>'
-    +'<div class="field"><label>Bio / Motto <span style="color:var(--t2);font-weight:400">(optional)</span></label><input id="ep-bio" type="text" value="'+escHtml(p.bio||"")+'" placeholder="z.B. Kein Schmerz, kein Erfolg" autocomplete="off" maxlength="80"></div>'
+    +'<div class="field"><label>Anzeigename</label><input id="ep-name" type="text" value="'+escHtml(userProfile._fn!==undefined?userProfile._fn:(p.displayName||p.username||""))+'" autocomplete="off" maxlength="30"></div>'
+    +'<div class="field"><label>Bio / Motto <span style="color:var(--t2);font-weight:400">(optional)</span></label><input id="ep-bio" type="text" value="'+escHtml(userProfile._fb!==undefined?userProfile._fb:(p.bio||""))+'" placeholder="z.B. Kein Schmerz, kein Erfolg" autocomplete="off" maxlength="80"></div>'
     +'<div class="field"><label>Trainingsgoal</label><select id="ep-goal">'
-    +GOALS.map(function(g){return'<option value="'+g.v+'"'+((p.goal||"")=== g.v?" selected":"")+'>'+g.l+'</option>';}).join('')
+    +GOALS.map(function(g){var sel=userProfile._fg!==undefined?userProfile._fg:(p.goal||"");return'<option value="'+g.v+'"'+(sel===g.v?" selected":"")+'>'+g.l+'</option>';}).join('')
     +'</select></div>'
     +'<div class="field"><label>Gewichtsklasse</label><select id="ep-wclass">'
-    +WCLASSES.map(function(w){return'<option value="'+w.v+'"'+((p.weightClass||"")=== w.v?" selected":"")+'>'+w.l+'</option>';}).join('')
+    +WCLASSES.map(function(w){var sel=userProfile._fw!==undefined?userProfile._fw:(p.weightClass||"");return'<option value="'+w.v+'"'+(sel===w.v?" selected":"")+'>'+w.l+'</option>';}).join('')
     +'</select></div>'
     +'</div>';
 
@@ -2686,6 +2710,8 @@ function saveProfile(){
     }
     Object.assign(userProfile,updates);
     delete userProfile._tmpVis;
+    delete userProfile._fn; delete userProfile._fb;
+    delete userProfile._fg; delete userProfile._fw; delete userProfile._fu;
     saveProfileLocal(userProfile);
     var av=document.querySelector(".hdr-avatar");
     if(av){av.style.background=selAvatarC;av.textContent=selAvatarE;}
