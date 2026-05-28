@@ -2564,8 +2564,12 @@ function renderEditProfile(){
     +'</div></div>';
 
   /* Profil-Infos */
-  h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:14px;margin-bottom:13px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
+  h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:14px;margin-bottom:13px;box-shadow:0 4px 20px rgba(0,0,0,0.5)">'
     +'<div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Profil</div>'
+    +((!p.username||p.username==="")
+      ?'<div class="field"><label>Benutzername <span style="color:var(--coral);font-weight:700">*</span></label><input id="ep-username" type="text" placeholder="z.B. lukas_fitness" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" maxlength="30" style="border-color:var(--blue-b)"><div style="font-size:11px;color:var(--t2);margin-top:4px">Nur Buchstaben, Zahlen und _ · Kann nicht geändert werden</div></div>'
+      :'<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--rs);margin-bottom:12px"><div style="font-size:22px">'+escHtml(p.avatarEmoji||"💪")+'</div><div><div style="font-size:13px;font-weight:700;color:var(--t0)">@'+escHtml(p.username)+'</div><div style="font-size:11px;color:var(--t2)">Benutzername kann nicht geändert werden</div></div></div>'
+    )
     +'<div class="field"><label>Anzeigename</label><input id="ep-name" type="text" value="'+escHtml(p.displayName||p.username||"")+'" autocomplete="off" maxlength="30"></div>'
     +'<div class="field"><label>Bio / Motto <span style="color:var(--t2);font-weight:400">(optional)</span></label><input id="ep-bio" type="text" value="'+escHtml(p.bio||"")+'" placeholder="z.B. Kein Schmerz, kein Erfolg" autocomplete="off" maxlength="80"></div>'
     +'<div class="field"><label>Trainingsgoal</label><select id="ep-goal">'
@@ -2642,25 +2646,47 @@ function toggleWeightsVis(){
 }
 
 function saveProfile(){
-  if(!currentUser||!userProfile)return;
-  var name=((document.getElementById("ep-name")||{}).value||"").trim()||userProfile.username||"";
+  if(!currentUser)return;
+  if(!userProfile) userProfile={uid:currentUser.uid,username:"",email:currentUser.email||""};
+
+  /* Benutzername: entweder neu eingegeben oder bestehender */
+  var newUsername=((document.getElementById("ep-username")||{}).value||"").trim().toLowerCase().replace("@","");
+  var finalUsername=newUsername||userProfile.username||"";
+
+  /* Validierung nur wenn neu eingegeben */
+  if(newUsername){
+    if(newUsername.length<3){toast("Benutzername mind. 3 Zeichen");return;}
+    if(!/^[a-z0-9_]+$/.test(newUsername)){toast("Nur Buchstaben, Zahlen und _");return;}
+  } else if(!userProfile.username){
+    toast("Bitte Benutzernamen eingeben");return;
+  }
+
+  var name=((document.getElementById("ep-name")||{}).value||"").trim()||finalUsername;
   var bio=((document.getElementById("ep-bio")||{}).value||"").trim();
   var goal=((document.getElementById("ep-goal")||{}).value)||"";
   var wclass=((document.getElementById("ep-wclass")||{}).value)||"";
   var vis=userProfile._tmpVis||(userProfile.privacy&&userProfile.privacy.visibility)||_epVis||"friends";
+
   var updates={
     displayName:name, bio:bio, goal:goal, weightClass:wclass,
     avatarEmoji:selAvatarE, avatarColor:selAvatarC,
-    uid:currentUser.uid,
-    username:userProfile.username||"",
+    uid:currentUser.uid, username:finalUsername,
     email:currentUser.email||"",
     privacy:{visibility:vis, showWeights:_epWeights}
   };
-  /* set+merge statt update – funktioniert auch wenn Dokument nicht existiert */
-  db.collection("users").doc(currentUser.uid).set(updates,{merge:true}).then(function(){
-    /* Benutzername-Mapping sicherstellen */
-    if(userProfile.username){
-      db.collection("usernames").doc(userProfile.username).set({uid:currentUser.uid},{merge:true}).catch(function(){});
+
+  /* Wenn neuer Benutzername: erst Verfügbarkeit prüfen */
+  var checkUsername=newUsername
+    ? db.collection("usernames").doc(newUsername).get().then(function(doc){
+        if(doc.exists&&doc.data().uid!==currentUser.uid) return Promise.reject({code:"username-taken"});
+      })
+    : Promise.resolve();
+
+  checkUsername.then(function(){
+    return db.collection("users").doc(currentUser.uid).set(updates,{merge:true});
+  }).then(function(){
+    if(finalUsername){
+      db.collection("usernames").doc(finalUsername).set({uid:currentUser.uid},{merge:true}).catch(function(){});
     }
     Object.assign(userProfile,updates);
     delete userProfile._tmpVis;
@@ -2670,6 +2696,7 @@ function saveProfile(){
     toast("✓ Profil gespeichert");
     goManage();
   }).catch(function(e){
+    if(e&&e.code==="username-taken"){toast("Benutzername bereits vergeben");return;}
     /* Firestore fehlgeschlagen → lokal speichern */
     Object.assign(userProfile,updates);
     saveProfileLocal(userProfile);
