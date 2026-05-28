@@ -2517,7 +2517,10 @@ function syncLocalDataToFirestore(uid){
 }
 
 function renderEditProfile(){
-  if(!userProfile){goManage();return;}
+  /* Kein Profil → leeres Profil erstellen statt zurückleiten */
+  if(!userProfile){
+    userProfile={uid:currentUser?currentUser.uid:"",username:"",displayName:"",avatarEmoji:selAvatarE||"💪",avatarColor:selAvatarC||"#a3e635",email:currentUser?currentUser.email:"",privacy:{visibility:"friends",showWeights:true}};
+  }
   var p=userProfile;
   var GOALS=[
     {v:"",l:"– kein Ziel –"},
@@ -2726,13 +2729,17 @@ loadAll();
 fAuth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
-    /* Firestore versuchen, sonst lokal laden */
     db.collection("users").doc(user.uid).get().then(function(doc){
-      userProfile=doc.exists?doc.data():loadProfileLocal(user.uid);
+      var loaded=doc.exists?doc.data():loadProfileLocal(user.uid);
+      /* Nicht überschreiben wenn Profil gerade bearbeitet wird */
+      if(screen!=="editProfile")userProfile=loaded;
+      else if(!userProfile)userProfile=loaded;
       if(screen==="auth")screen="home";
       renderApp();
     }).catch(function(){
-      userProfile=loadProfileLocal(user.uid);
+      var loaded=loadProfileLocal(user.uid);
+      if(screen!=="editProfile")userProfile=loaded;
+      else if(!userProfile)userProfile=loaded;
       if(screen==="auth")screen="home";
       renderApp();
     });
