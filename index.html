@@ -750,7 +750,7 @@ function timeSince(dateStr){
 function renderFriends(){
   var pg=document.getElementById("page");if(!pg)return;
   var pendBadge=pendingRequests.length?' <span style="background:var(--coral);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;font-weight:700">'+pendingRequests.length+'</span>':'';
-  var TABS=[{v:"feed",l:"📱 Feed"},{v:"friends",l:"👥 Freunde"+pendBadge},{v:"search",l:"🔍 Suchen"},{v:"ranking",l:"🏆 Rangliste"}];
+  var TABS=[{v:"feed",l:"📱 Feed"},{v:"ranking",l:"🏆 Rangliste"},{v:"friends",l:"👥 Freunde"+pendBadge},{v:"search",l:"🔍 Suchen"}];
   var h='<div style="display:flex;gap:5px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch">';
   TABS.forEach(function(t){var on=friendsTab===t.v;h+='<button onclick="friendsTab=\''+t.v+'\';renderFriends();'+(t.v==="feed"?"loadFeed()":t.v==="ranking"?"loadRanking()":"")+'" style="flex-shrink:0;padding:8px 12px;border:1px solid '+(on?"var(--blue-b)":"var(--b0)")+';border-radius:var(--rs);background:'+(on?"var(--blue-bg)":"var(--bg2)")+';color:'+(on?"var(--blue)":"var(--t2)")+';font-size:12px;font-weight:'+(on?"600":"400")+';font-family:inherit;cursor:pointer">'+t.l+'</button>';});
   h+='</div>';
@@ -2755,21 +2755,47 @@ try{ if(window.screen&&screen.orientation&&screen.orientation.lock)screen.orient
 /* Swipe left/right between main tabs */
 (function(){
   var sx=0,sy=0;
-  var MAIN=["home","planSelect","stats","manage"];
+  var MAIN=["home","planSelect","friends","stats","manage"];
+  var FRIEND_TABS=["feed","ranking","friends","search"];
   document.addEventListener("touchstart",function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
   document.addEventListener("touchend",function(e){
     var dx=e.changedTouches[0].clientX-sx;
     var dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dy)>Math.abs(dx)||Math.abs(dx)<75)return;
+
+    /* Swipe innerhalb des Friends-Screens → Sub-Tabs wechseln */
+    if(screen==="friends"){
+      var fi=FRIEND_TABS.indexOf(friendsTab);
+      if(dx<0&&fi<FRIEND_TABS.length-1){
+        friendsTab=FRIEND_TABS[fi+1];
+        if(friendsTab==="feed")loadFeed();
+        if(friendsTab==="ranking")loadRanking();
+        renderFriends();
+      } else if(dx>0&&fi>0){
+        friendsTab=FRIEND_TABS[fi-1];
+        if(friendsTab==="feed")loadFeed();
+        if(friendsTab==="ranking")loadRanking();
+        renderFriends();
+      }
+      return;
+    }
+
+    /* Swipe zwischen Haupt-Screens */
     var cur=(screen==="plan"||screen==="exDetail")?"planSelect":screen;
     var idx=MAIN.indexOf(cur);
     if(idx===-1)return;
     if(dx<0&&idx<MAIN.length-1){
       var n=MAIN[idx+1];
-      if(n==="planSelect")goPlan();else if(n==="stats")goStats();else goManage();
+      if(n==="planSelect")goPlan();
+      else if(n==="friends")goFriends();
+      else if(n==="stats")goStats();
+      else goManage();
     } else if(dx>0&&idx>0){
       var p=MAIN[idx-1];
-      if(p==="home")goHomeBtn();else if(p==="planSelect")goPlan();else goStats();
+      if(p==="home")goHomeBtn();
+      else if(p==="planSelect")goPlan();
+      else if(p==="friends")goFriends();
+      else goStats();
     }
   },{passive:true});
 })();
