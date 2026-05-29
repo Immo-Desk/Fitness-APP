@@ -524,8 +524,9 @@ function renderExDetail(){
 
   var sets=SESSION_SETS[ex.id]||[];
   h+='<div id="setrows_'+ex.id+'">';
-  sets.forEach(function(s,i){h+=buildSetRow(ex.id,i,s,restSec);});
+  sets.forEach(function(s,i){h+=buildSetRow(ex.id,i,s);});
   h+='<button class="set-add-btn" onclick="addSet(\''+ex.id+'\')">+ Satz hinzufügen</button>'
+    +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+(ex.p&&ex.p!=="–"?escHtml(ex.p):"60 s")+'</button>'
     +'</div>'
     +'</div>';
 
@@ -566,14 +567,17 @@ function toggleExDetail(exId){
 function buildSetDetail(exId,ex){
   var sets=SESSION_SETS[exId]||[];
   var restSec=parseRestSec(ex.p);
+  var restLabel=ex.p&&ex.p!=="–"?ex.p:"60 s";
   var h='<div class="set-detail">'
     +'<div class="set-detail-hdr"><span class="set-detail-title">Sätze verfolgen</span>'
     +'<button onclick="resetSets(\''+exId+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>';
-  sets.forEach(function(s,i){h+=buildSetRow(exId,i,s,restSec);});
-  h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button></div>';
+  sets.forEach(function(s,i){h+=buildSetRow(exId,i,s);});
+  h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button>'
+    +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+restLabel+'</button>'
+    +'</div>';
   return h;
 }
-function buildSetRow(exId,i,s,restSec){
+function buildSetRow(exId,i,s){
   return '<div id="sr_'+exId+'_'+i+'" class="set-row'+(s.done?" done":"")+'">'
     +'<span class="set-num">'+(i+1)+'</span>'
     +'<input id="sw_'+exId+'_'+i+'" class="set-inp" type="text" inputmode="decimal" autocomplete="off" value="'+escHtml(String(s.w))+'" style="width:52px" onclick="this.select()" onblur="saveSetW(\''+exId+'\','+i+',this.value)">'
@@ -582,7 +586,6 @@ function buildSetRow(exId,i,s,restSec){
     +'<input id="sr2_'+exId+'_'+i+'" class="set-inp" type="text" inputmode="numeric" autocomplete="off" value="'+escHtml(String(s.r))+'" style="width:34px" onclick="this.select()" onblur="saveSetR(\''+exId+'\','+i+',this.value)">'
     +'<span class="set-unit">Wdh</span>'
     +'<button class="set-done-btn'+(s.done?" done":"")+'" id="sd_'+exId+'_'+i+'" onclick="toggleSetDone(\''+exId+'\','+i+')">'+(s.done?"✓":"")+'</button>'
-    +'<button class="set-timer-btn" onclick="startTimer('+restSec+',\'Satz '+(i+1)+'\')" >⏱</button>'
     +'</div>';
 }
 function saveSetW(exId,i,val){if(!SESSION_SETS[exId])return;SESSION_SETS[exId][i].w=String(val).replace(",",".").trim()||"0";}
@@ -607,7 +610,6 @@ function toggleSetDone(exId,i){
       if(!HIST[exId])HIST[exId]=[];
       var lh=HIST[exId][HIST[exId].length-1];
       if(!lh||lh.d!==today){HIST[exId].push({w:wRaw,d:today});sv(SK_HIST,HIST);}
-      /* UI auf Detailseite aktualisieren */
       var wInp=document.getElementById("wv_"+exId);
       if(wInp)wInp.value=fmtW(wRaw);
       var wDate=document.getElementById("wd_"+exId);
@@ -615,23 +617,36 @@ function toggleSetDone(exId,i){
       var prBadge=document.getElementById("pr_"+exId);
       if(prBadge)prBadge.style.display=isPR?"inline-flex":"none";
       if(isPR)toast("🏆 Neuer PR! "+fmtW(wRaw)+" kg");
-      /* Set-Log für Kalenderansicht speichern */
       var logKey=exId+"|"+today;
       SETLOG[logKey]=SESSION_SETS[exId].map(function(s){return{w:s.w,r:s.r,done:s.done};});
       sv(SK_SETLOG,SETLOG);
     }
+
+    /* ── Pausentimer automatisch starten ── */
+    var ex=findExById(exId);
+    var restSec=ex?parseRestSec(ex.p):60;
+    /* Prüfen ob noch weitere Sätze offen sind */
+    var remaining=SESSION_SETS[exId].filter(function(s){return!s.done;}).length;
+    if(remaining>0){
+      startTimer(restSec,"⏱ Pause vor Satz "+(SESSION_SETS[exId].length-remaining+1));
+    }
+
+  } else {
+    /* Satz wieder aufgehoben → Timer stoppen */
+    stopTimer();
   }
 }
 function rebuildSetRows(exId){
   var ex=findExById(exId);if(!ex)return;
   var restSec=parseRestSec(ex.p);
+  var restLabel=ex.p&&ex.p!=="–"?escHtml(ex.p):"60 s";
   var sets=SESSION_SETS[exId]||[];
   var h='';
-  sets.forEach(function(s,i){h+=buildSetRow(exId,i,s,restSec);});
-  h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button>';
+  sets.forEach(function(s,i){h+=buildSetRow(exId,i,s);});
+  h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button>'
+   +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+restLabel+'</button>';
   var el=document.getElementById("setrows_"+exId);
   if(el){el.innerHTML=h;return;}
-  /* fallback: dropdown container */
   var el2=document.getElementById("sets_"+exId);
   if(el2)el2.innerHTML=buildSetDetail(exId,ex);
 }
