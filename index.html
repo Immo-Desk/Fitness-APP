@@ -3148,10 +3148,26 @@ try{ if(window.screen&&screen.orientation&&screen.orientation.lock)screen.orient
 
 /* Swipe left/right between main tabs */
 (function(){
-  var sx=0,sy=0;
+  var sx=0,sy=0,swipeBlocked=false;
   var MAIN=["home","planSelect","friends","stats","manage"];
-  document.addEventListener("touchstart",function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  document.addEventListener("touchstart",function(e){
+    sx=e.touches[0].clientX;
+    sy=e.touches[0].clientY;
+    /* Prüfen ob Touch in scrollbarem Container startet */
+    swipeBlocked=false;
+    var el=e.target;
+    while(el&&el!==document.body){
+      try{
+        var ovx=window.getComputedStyle(el).overflowX;
+        if((ovx==="auto"||ovx==="scroll")&&el.scrollWidth>el.clientWidth){
+          swipeBlocked=true; break;
+        }
+      }catch(err){}
+      el=el.parentElement;
+    }
+  },{passive:true});
   document.addEventListener("touchend",function(e){
+    if(swipeBlocked)return;
     var dx=e.changedTouches[0].clientX-sx;
     var dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dy)>Math.abs(dx)||Math.abs(dx)<75)return;
