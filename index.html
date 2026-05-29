@@ -2270,12 +2270,19 @@ function renderCal(){
     var dStr=calYear+"-"+String(calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
     var isToday=dStr===today;
     var sess=SESSIONS.filter(function(s){return s.d===dStr;});
-    var hasClick=sess.length>0;
-    var firstDid=hasClick?sess[0].did:null;
-    h+='<div class="cal-cell'+(isToday?" today":"")+'" style="position:relative">';
-    h+='<span class="cal-num'+(isToday?" today-num":"")+'" style="font-weight:'+(isToday?"700":"400")+'"'+(hasClick?' onclick="goCalDetail(\''+dStr+'\',\''+firstDid+'\')" style="cursor:pointer"':'')+'>'+d+'</span>';
-    sess.forEach(function(s){var sc=C[s.color]||C.blue;h+='<div class="cal-dot" style="background:'+sc.m+'"></div>';});
-    h+='<button onclick="event.stopPropagation();openAddSession(\''+dStr+'\')" style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;border:none;background:var(--blue);color:#000;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;opacity:.7">+</button>';
+    h+='<div class="cal-cell'+(isToday?" today":"")+'" onclick="openAddSession(\''+dStr+'\')" style="cursor:pointer;min-height:44px">';
+    h+='<span class="cal-num'+(isToday?" today-num":"")+'" style="font-weight:'+(isToday?"700":"400")+'">'+d+'</span>';
+    if(sess.length===1){
+      h+='<div style="font-size:16px;line-height:1">'+getSessionIcon(sess[0].did)+'</div>';
+    } else if(sess.length===2){
+      h+='<div style="display:flex;gap:1px">'
+        +'<div style="font-size:12px;line-height:1">'+getSessionIcon(sess[0].did)+'</div>'
+        +'<div style="font-size:12px;line-height:1">'+getSessionIcon(sess[1].did)+'</div>'
+        +'</div>';
+    } else if(sess.length>2){
+      h+='<div style="font-size:12px;line-height:1">'+getSessionIcon(sess[0].did)+'</div>'
+        +'<div style="font-size:9px;color:var(--blue);font-weight:700">+'+( sess.length-1)+'</div>';
+    }
     h+='</div>';
   }
   h+='</div></div>';
@@ -2664,10 +2671,27 @@ function openAddSession(date){
 function renderAddSession(){
   var pg=document.getElementById("page");if(!pg)return;
   var parts=addSessionDate.split("-");
-  var MNAMES=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+  var MNAMES=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
   var dateLabel=parseInt(parts[2])+". "+MNAMES[parseInt(parts[1])-1]+" "+parts[0];
+  var existing=SESSIONS.filter(function(s){return s.d===addSessionDate;});
   var vd=getVisibleDays();
-  var h='<div style="font-size:13px;color:var(--t1);margin-bottom:16px">Welche Aktivität hast du am <strong style="color:var(--t0)">'+dateLabel+'</strong> gemacht?</div>';
+  var h='';
+
+  /* Bereits eingetragene Aktivitäten */
+  if(existing.length){
+    h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Bereits eingetragen</div>';
+    existing.forEach(function(s){
+      var c=C[s.color]||C.blue;
+      h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--bg2);border:1px solid '+c.b+';border-left:3px solid '+c.m+';border-radius:var(--r);margin-bottom:8px">'
+        +'<div style="font-size:22px">'+getSessionIcon(s.did)+'</div>'
+        +'<div style="flex:1;font-size:13px;font-weight:600;color:var(--t0)">'+escHtml(s.title)+'</div>'
+        +'<button onclick="delSession(\''+s.d+'\',\''+s.did+'\',this)" style="padding:5px 10px;background:transparent;border:1px solid var(--b1);border-radius:var(--rs);color:var(--t2);font-size:11px;font-family:inherit;cursor:pointer">✕ Löschen</button>'
+        +'</div>';
+    });
+    h+='<div style="height:1px;background:var(--b0);margin:14px 0"></div>';
+  }
+
+  h+='<div style="font-size:13px;color:var(--t1);margin-bottom:14px">Was hast du am <strong style="color:var(--t0)">'+dateLabel+'</strong> gemacht?</div>';
 
   if(vd.length){
     h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trainingsplan</div>';
@@ -2708,6 +2732,14 @@ function saveManualSession(did,title,color){
 function goManage(){ screen="manage"; renderApp(); }
 function goStats(){ screen="stats"; renderApp(); }
 function goStatsCal(){ statTab="cal"; goStats(); }
+function getSessionIcon(did){
+  if(did&&did.startsWith("sport_")){
+    for(var i=0;i<SPORTS.length;i++){if(SPORTS[i].id===did)return SPORTS[i].icon;}
+    return "🏅";
+  }
+  var ef=getEffDay(did);
+  return ef?ef.icon:"💪";
+}
 function goFriends(){ screen="friends"; friendsLoaded=false; feedLoaded=false; renderApp(); loadFriendsData(); }
 function goEditProfile(){
   if(userProfile){
