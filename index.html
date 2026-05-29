@@ -419,7 +419,7 @@ var AVATAR_COLORS=["#7b8cff","#40e68a","#30dfc8","#f7ad28","#ff6e5c","#b580ff","
 
 /* ═══ STORAGE KEYS ═══ */
 var SK_W="tp_w7",SK_PR="tp_pr7",SK_EX="tp_ex7",SK_HIST="tp_hist7",SK_BW="tp_bw7";
-var SK_SESS="tp_sess7",SK_DCFG="tp_dcfg7",SK_DORD="tp_dord7",SK_CDAYS="tp_cdays7",SK_THEME="tp_theme7",SK_SETLOG="tp_setlog7";
+var SK_SESS="tp_sess7",SK_DCFG="tp_dcfg7",SK_DORD="tp_dord7",SK_CDAYS="tp_cdays7",SK_THEME="tp_theme7",SK_SETLOG="tp_setlog7",SK_ACH="tp_ach7";
 
 /* ═══ STATE ═══ */
 var screen="home",active="mo",statTab="cal",editMode=false,addOpen=false,manageEditId=null,addDayOpen=false,manageDayId=null,manageEditExIdx=null,manageAddExOpen=false;null,manageEditExIdx=null,manageAddExOpen=false;
@@ -2272,9 +2272,10 @@ function renderCal(){
     var sess=SESSIONS.filter(function(s){return s.d===dStr;});
     var hasClick=sess.length>0;
     var firstDid=hasClick?sess[0].did:null;
-    h+='<div class="cal-cell'+(isToday?" today":"")+'"'+(hasClick?' onclick="goCalDetail(\''+dStr+'\',\''+firstDid+'\')" style="cursor:pointer"':'')+'">';
-    h+='<span class="cal-num'+(isToday?" today-num":"")+'" style="font-weight:'+(isToday?"700":"400")+'">'+d+'</span>';
+    h+='<div class="cal-cell'+(isToday?" today":"")+'" style="position:relative">';
+    h+='<span class="cal-num'+(isToday?" today-num":"")+'" style="font-weight:'+(isToday?"700":"400")+'"'+(hasClick?' onclick="goCalDetail(\''+dStr+'\',\''+firstDid+'\')" style="cursor:pointer"':'')+'>'+d+'</span>';
     sess.forEach(function(s){var sc=C[s.color]||C.blue;h+='<div class="cal-dot" style="background:'+sc.m+'"></div>';});
+    h+='<button onclick="event.stopPropagation();openAddSession(\''+dStr+'\')" style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;border:none;background:var(--blue);color:#000;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;opacity:.7">+</button>';
     h+='</div>';
   }
   h+='</div></div>';
@@ -2368,22 +2369,55 @@ function renderORM(){
 }
 
 /* ═══ ACHIEVEMENTS & LEVELS ═══ */
-var SK_ACH="tp_ach7";
+var addSessionDate="";
+
+var SPORTS=[
+  {id:"sport_football",  title:"Fußball",      icon:"⚽", color:"green"},
+  {id:"sport_tennis",    title:"Tennis",        icon:"🎾", color:"teal"},
+  {id:"sport_golf",      title:"Golf",          icon:"⛳", color:"green"},
+  {id:"sport_running",   title:"Joggen",        icon:"🏃", color:"amber"},
+  {id:"sport_swimming",  title:"Schwimmen",     icon:"🏊", color:"blue"},
+  {id:"sport_cycling",   title:"Radfahren",     icon:"🚴", color:"teal"},
+  {id:"sport_boxing",    title:"Boxen",         icon:"🥊", color:"coral"},
+  {id:"sport_basketball",title:"Basketball",    icon:"🏀", color:"amber"},
+  {id:"sport_volleyball",title:"Volleyball",    icon:"🏐", color:"blue"},
+  {id:"sport_hiking",    title:"Wandern",       icon:"🥾", color:"green"},
+  {id:"sport_yoga",      title:"Yoga",          icon:"🧘", color:"purple"},
+  {id:"sport_climbing",  title:"Klettern",      icon:"🧗", color:"coral"},
+  {id:"sport_skiing",    title:"Skifahren",     icon:"⛷️", color:"teal"},
+  {id:"sport_badminton", title:"Badminton",     icon:"🏸", color:"amber"},
+  {id:"sport_martial",   title:"Kampfsport",    icon:"🥋", color:"coral"},
+  {id:"sport_rowing",    title:"Rudern",        icon:"🚣", color:"blue"},
+  {id:"sport_dance",     title:"Tanzen",        icon:"💃", color:"purple"},
+  {id:"sport_other",     title:"Sonstiges",     icon:"🏅", color:"blue"},
+];
 var UNLOCKED_ACH=[];
 
 var ACHIEVEMENTS=[
-  {id:"a01",icon:"👟",title:"Erster Schritt",     desc:"Erstes Training abgeschlossen",      pts:50,  check:function(){return SESSIONS.length>=1;}},
-  {id:"a02",icon:"💪",title:"Eiserne Disziplin",  desc:"10 Trainings abgeschlossen",          pts:100, check:function(){return SESSIONS.length>=10;}},
-  {id:"a03",icon:"🔥",title:"Auf Feuer",           desc:"50 Trainings abgeschlossen",          pts:250, check:function(){return SESSIONS.length>=50;}},
-  {id:"a04",icon:"💎",title:"Legende",             desc:"100 Trainings abgeschlossen",         pts:500, check:function(){return SESSIONS.length>=100;}},
-  {id:"a05",icon:"⚡",title:"Wochenheld",          desc:"3 Trainings in einer Woche",          pts:75,  check:function(){return sessThisWeek().length>=3;}},
-  {id:"a06",icon:"🏆",title:"Monatsmeister",       desc:"10 Trainings in einem Monat",         pts:150, check:function(){var m=new Date().toISOString().slice(0,7);return SESSIONS.filter(function(s){return s.d&&s.d.startsWith(m);}).length>=10;}},
-  {id:"a07",icon:"🎯",title:"PR-Jäger",            desc:"Ersten persönlichen Rekord gesetzt",  pts:100, check:function(){return Object.keys(PR).length>0;}},
-  {id:"a08",icon:"🔗",title:"Auf Kurs",            desc:"2 Wochen Streak",                     pts:80,  check:function(){return getStreak()>=2;}},
-  {id:"a09",icon:"⛓️",title:"Unaufhaltbar",        desc:"4 Wochen Streak",                     pts:200, check:function(){return getStreak()>=4;}},
-  {id:"a10",icon:"🥇",title:"Gold-Kämpfer",        desc:"Gold-Rang erreicht",                  pts:160, check:function(){return getPoints()>=160;}},
-  {id:"a11",icon:"🔷",title:"Platin-Elite",        desc:"Platin-Rang erreicht",                pts:230, check:function(){return getPoints()>=230;}},
-  {id:"a12",icon:"💠",title:"Diamant-Krieger",     desc:"Diamant-Rang erreicht",               pts:290, check:function(){return getPoints()>=290;}},
+  {id:"a01",icon:"👟",title:"Erster Schritt",      desc:"Erstes Training abgeschlossen",                  pts:50,  check:function(){return SESSIONS.length>=1;}},
+  {id:"a02",icon:"💪",title:"Eiserne Disziplin",   desc:"10 Trainings abgeschlossen",                     pts:100, check:function(){return SESSIONS.length>=10;}},
+  {id:"a03",icon:"🔥",title:"Auf Feuer",            desc:"50 Trainings abgeschlossen",                     pts:250, check:function(){return SESSIONS.length>=50;}},
+  {id:"a04",icon:"💎",title:"Legende",              desc:"100 Trainings abgeschlossen",                    pts:500, check:function(){return SESSIONS.length>=100;}},
+  {id:"a05",icon:"🌌",title:"Unsterblich",          desc:"200 Trainings abgeschlossen",                    pts:1000,check:function(){return SESSIONS.length>=200;}},
+  {id:"a06",icon:"⚡",title:"Wochenheld",           desc:"3 Trainings in einer Woche",                     pts:75,  check:function(){return sessThisWeek().length>=3;}},
+  {id:"a07",icon:"🗓️",title:"5er-Woche",            desc:"5 Trainings in einer Woche",                     pts:150, check:function(){return sessThisWeek().length>=5;}},
+  {id:"a08",icon:"🏆",title:"Monatsmeister",        desc:"10 Trainings in einem Monat",                    pts:150, check:function(){var m=new Date().toISOString().slice(0,7);return SESSIONS.filter(function(s){return s.d&&s.d.startsWith(m);}).length>=10;}},
+  {id:"a09",icon:"👑",title:"Trainingsmaschine",    desc:"15 Trainings in einem Monat",                    pts:300, check:function(){var m=new Date().toISOString().slice(0,7);return SESSIONS.filter(function(s){return s.d&&s.d.startsWith(m);}).length>=15;}},
+  {id:"a10",icon:"🔗",title:"Auf Kurs",             desc:"2 Wochen Streak",                                pts:80,  check:function(){return getStreak()>=2;}},
+  {id:"a11",icon:"⛓️",title:"Unaufhaltbar",         desc:"4 Wochen Streak",                                pts:200, check:function(){return getStreak()>=4;}},
+  {id:"a12",icon:"🌟",title:"Ewige Flamme",         desc:"8 Wochen Streak",                                pts:400, check:function(){return getStreak()>=8;}},
+  {id:"a13",icon:"🎯",title:"PR-Jäger",             desc:"Ersten persönlichen Rekord gesetzt",             pts:100, check:function(){return Object.keys(PR).length>0;}},
+  {id:"a14",icon:"🏋️",title:"PR-Sammler",           desc:"10 persönliche Rekorde gesetzt",                 pts:200, check:function(){return Object.keys(PR).length>=10;}},
+  {id:"a15",icon:"🎖️",title:"PR-König",             desc:"25 persönliche Rekorde gesetzt",                 pts:400, check:function(){return Object.keys(PR).length>=25;}},
+  {id:"a16",icon:"🥇",title:"Gold-Kämpfer",         desc:"Gold-Rang erreicht",                             pts:160, check:function(){return getPoints()>=160;}},
+  {id:"a17",icon:"🔷",title:"Platin-Elite",         desc:"Platin-Rang erreicht",                           pts:230, check:function(){return getPoints()>=230;}},
+  {id:"a18",icon:"💠",title:"Diamant-Krieger",      desc:"Diamant-Rang erreicht",                          pts:290, check:function(){return getPoints()>=290;}},
+  {id:"a19",icon:"🌍",title:"Allrounder",           desc:"Eine Sportart außerhalb des Plans eingetragen",  pts:80,  check:function(){return SESSIONS.some(function(s){return s.did&&s.did.startsWith("sport_");});}},
+  {id:"a20",icon:"🎽",title:"Sportler",             desc:"5 verschiedene Aktivitäten eingetragen",         pts:150, check:function(){var ids=new Set(SESSIONS.map(function(s){return s.did;}));return ids.size>=5;}},
+  {id:"a21",icon:"🏅",title:"Multisportler",        desc:"3 verschiedene Sportarten eingetragen",          pts:200, check:function(){var sp=new Set(SESSIONS.filter(function(s){return s.did&&s.did.startsWith("sport_");}).map(function(s){return s.did;}));return sp.size>=3;}},
+  {id:"a22",icon:"🌱",title:"Trainee",              desc:"Level 2 erreicht",                               pts:50,  check:function(){return SESSIONS.length>=10;}},
+  {id:"a23",icon:"⚡",title:"Athlet",               desc:"Level 3 erreicht",                               pts:100, check:function(){return SESSIONS.length>=25;}},
+  {id:"a24",icon:"🏆",title:"Champion",             desc:"Level 4 erreicht",                               pts:200, check:function(){return SESSIONS.length>=50;}},
 ];
 
 var LEVELS=[
@@ -2437,18 +2471,18 @@ function getSeasonEvent(){
   var prefix=now.getFullYear()+"-"+String(m+1).padStart(2,"0");
   var progress=SESSIONS.filter(function(s){return s.d&&s.d.startsWith(prefix);}).length;
   var events=[
-    {name:"Winter Challenge", icon:"❄️",color:"teal", target:12},
-    {name:"Winter Challenge", icon:"❄️",color:"teal", target:12},
-    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
-    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
-    {name:"Frühlings Challenge",icon:"🌸",color:"blue",target:15},
-    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
-    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
-    {name:"Summer Challenge",  icon:"☀️",color:"amber",target:20},
-    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
-    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
-    {name:"Herbst Challenge",  icon:"🍂",color:"coral",target:15},
-    {name:"Winter Challenge",  icon:"❄️",color:"teal", target:12},
+    {name:"Winter Challenge",   icon:"❄️", color:"teal",  target:12}, // Jan
+    {name:"Winter Challenge",   icon:"❄️", color:"teal",  target:12}, // Feb
+    {name:"Frühlings Challenge",icon:"🌸", color:"blue",  target:15}, // Mar
+    {name:"Frühlings Challenge",icon:"🌸", color:"blue",  target:15}, // Apr
+    {name:"Summer Challenge",   icon:"☀️", color:"amber", target:20}, // Mai
+    {name:"Summer Challenge",   icon:"☀️", color:"amber", target:20}, // Jun
+    {name:"Summer Challenge",   icon:"☀️", color:"amber", target:20}, // Jul
+    {name:"Summer Challenge",   icon:"☀️", color:"amber", target:20}, // Aug
+    {name:"Herbst Challenge",   icon:"🍂", color:"coral", target:15}, // Sep
+    {name:"Herbst Challenge",   icon:"🍂", color:"coral", target:15}, // Okt
+    {name:"Herbst Challenge",   icon:"🍂", color:"coral", target:15}, // Nov
+    {name:"Winter Challenge",   icon:"❄️", color:"teal",  target:12}, // Dez
   ];
   return Object.assign({},events[m],{progress:progress});
 }
@@ -2594,6 +2628,10 @@ function renderApp(){
   else if(screen==="manage"){ hl.innerHTML='<button class="back-btn" onclick="goHome()">‹ Zurück</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Einstellungen</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderManage(); }
   else if(screen==="editProfile"){ hl.innerHTML='<button class="back-btn" onclick="goManage()">‹ Einstellungen</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Profil bearbeiten</div>'; document.getElementById("tabs-wrap").innerHTML=""; renderEditProfile(); }
   else if(screen==="templates"){ hl.innerHTML=''; document.getElementById("tabs-wrap").innerHTML=""; renderTemplates(); }
+  else if(screen==="addSession"){
+    hl.innerHTML='<button class="back-btn" onclick="screen=\'stats\';statTab=\'cal\';renderApp()">‹ Kalender</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Aktivität hinzufügen</div>';
+    document.getElementById("tabs-wrap").innerHTML=""; renderAddSession();
+  }
   else if(screen==="manageDays"){
     if(manageDayId){
       hl.innerHTML='<button class="back-btn" onclick="manageDayId=null;manageEditExIdx=null;manageAddExOpen=false;renderManageDays()">‹ Tage</button><div style="font-size:13px;color:var(--t2);margin-top:3px">Übungen</div>';
@@ -2616,7 +2654,57 @@ function goPlan(){
   screen=(hasActive&&active)?"plan":"planSelect";
   renderApp();
 }
-function goStats(){ screen="stats"; renderApp(); }
+/* ═══ MANUAL SESSION ═══ */
+function openAddSession(date){
+  addSessionDate=date;
+  screen="addSession";
+  renderApp();
+}
+
+function renderAddSession(){
+  var pg=document.getElementById("page");if(!pg)return;
+  var parts=addSessionDate.split("-");
+  var MNAMES=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+  var dateLabel=parseInt(parts[2])+". "+MNAMES[parseInt(parts[1])-1]+" "+parts[0];
+  var vd=getVisibleDays();
+  var h='<div style="font-size:13px;color:var(--t1);margin-bottom:16px">Welche Aktivität hast du am <strong style="color:var(--t0)">'+dateLabel+'</strong> gemacht?</div>';
+
+  if(vd.length){
+    h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trainingsplan</div>';
+    vd.forEach(function(d){
+      var c=C[d.color]||C.blue;
+      h+='<div onclick="saveManualSession(\''+d.id+'\',\''+escHtml(d.title)+'\',\''+d.color+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid '+c.b+';border-left:4px solid '+c.m+';border-radius:var(--r);margin-bottom:8px;cursor:pointer" ontouchstart="this.style.opacity=\'.7\'" ontouchend="this.style.opacity=\'1\'">'
+        +'<div style="width:40px;height:40px;border-radius:10px;background:'+c.hdr+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+d.icon+'</div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:600;color:'+c.m+'">'+escHtml(d.title)+'</div>'
+        +'<div style="font-size:12px;color:var(--t2);margin-top:1px">'+escHtml(d.sub)+'</div></div>'
+        +'<div style="font-size:18px;color:var(--t2);opacity:.4">›</div></div>';
+    });
+  }
+
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Andere Sportarten</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  SPORTS.forEach(function(sp){
+    h+='<div onclick="saveManualSession(\''+sp.id+'\',\''+escHtml(sp.title)+'\',\''+sp.color+'\')" style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);cursor:pointer" ontouchstart="this.style.opacity=\'.7\'" ontouchend="this.style.opacity=\'1\'">'
+      +'<div style="font-size:24px;flex-shrink:0">'+sp.icon+'</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--t0)">'+escHtml(sp.title)+'</div></div>';
+  });
+  h+='</div>';
+  pg.innerHTML=h;
+}
+
+function saveManualSession(did,title,color){
+  var oldPts=getPoints();
+  SESSIONS=SESSIONS.filter(function(s){return!(s.d===addSessionDate&&s.did===did);});
+  var sess={d:addSessionDate,did:did,title:title,color:color};
+  SESSIONS.push(sess);
+  sv(SK_SESS,SESSIONS);
+  if(currentUser){try{db.collection("users").doc(currentUser.uid).collection("sessions").doc(addSessionDate+"_"+did).set(sess).catch(function(){});}catch(e){}}
+  checkRankUp(oldPts);
+  setTimeout(function(){checkAchievements();},1000);
+  toast("✓ "+title+" gespeichert!");
+  screen="stats"; statTab="cal"; renderApp();
+}
+
 function goManage(){ screen="manage"; renderApp(); }
 function goStatsCal(){ statTab="cal"; goStats(); }
 function goFriends(){ screen="friends"; friendsLoaded=false; feedLoaded=false; renderApp(); loadFriendsData(); }
