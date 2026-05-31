@@ -523,12 +523,27 @@ function renderExDetail(){
     +'</div>';
 
   var sets=SESSION_SETS[ex.id]||[];
+  var last=getLastSets(ex.id);
+  var lastBlock="";
+  if(last&&last.sets&&last.sets.length){
+    var doneSets=last.sets.filter(function(s){return s.done&&s.w&&s.w!=="0";});
+    if(doneSets.length){
+      var lParts=doneSets.map(function(s,i){
+        return '<span style="font-size:11px;color:var(--t1);white-space:nowrap">'+(i+1)+'. <strong style="color:var(--t0)">'+s.w+'kg</strong>×'+s.r+'</span>';
+      }).join('<span style="color:var(--b1);margin:0 3px">·</span>');
+      lastBlock='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:7px 10px;background:var(--bg3);border-radius:var(--rs);margin-bottom:8px;border-left:3px solid var(--blue-b)">'
+        +'<span style="font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-right:2px;white-space:nowrap">↑ '+fmtDate(last.date)+'</span>'
+        +lParts+'</div>';
+    }
+  }
+  h+='<div class="set-detail"><div class="set-detail-hdr"><span class="set-detail-title">Sätze verfolgen</span>'
+    +'<button onclick="resetSets(\''+ex.id+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>'
+    +lastBlock;
   h+='<div id="setrows_'+ex.id+'">';
   sets.forEach(function(s,i){h+=buildSetRow(ex.id,i,s);});
   h+='<button class="set-add-btn" onclick="addSet(\''+ex.id+'\')">+ Satz hinzufügen</button>'
     +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+(ex.p&&ex.p!=="–"?escHtml(ex.p):"60 s")+'</button>'
-    +'</div>'
-    +'</div>';
+    +'</div></div>';
 
   /* Übung abschließen */
   var ef2=getEffDay(detailDayId),c2=C[ef2.color];
@@ -564,13 +579,42 @@ function toggleExDetail(exId){
     var tog=document.getElementById("tog_"+exId);if(tog)tog.textContent="▲";
   }
 }
+function getLastSets(exId){
+  /* Letzten SETLOG-Eintrag für diese Übung finden (nicht heute) */
+  var today=new Date().toISOString().slice(0,10);
+  var prefix=exId+"|";
+  var keys=Object.keys(SETLOG).filter(function(k){
+    return k.startsWith(prefix)&&!k.endsWith(today);
+  });
+  if(!keys.length)return null;
+  keys.sort(function(a,b){return b.localeCompare(a);});
+  return {sets:SETLOG[keys[0]], date:keys[0].replace(prefix,"")};
+}
+
 function buildSetDetail(exId,ex){
   var sets=SESSION_SETS[exId]||[];
   var restSec=parseRestSec(ex.p);
   var restLabel=ex.p&&ex.p!=="–"?ex.p:"60 s";
+
+  /* Letzte Einheit laden */
+  var last=getLastSets(exId);
+  var lastBlock="";
+  if(last&&last.sets&&last.sets.length){
+    var doneSets=last.sets.filter(function(s){return s.done&&s.w&&s.w!=="0";});
+    if(doneSets.length){
+      var parts=doneSets.map(function(s,i){
+        return '<span style="font-size:11px;color:var(--t1);white-space:nowrap">'+(i+1)+'. <strong style="color:var(--t0)">'+s.w+'kg</strong>×'+s.r+'</span>';
+      }).join('<span style="color:var(--b1);margin:0 3px">·</span>');
+      lastBlock='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:7px 10px;background:var(--bg3);border-radius:var(--rs);margin-bottom:8px;border-left:3px solid var(--blue-b)">'
+        +'<span style="font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-right:2px;white-space:nowrap">↑ '+fmtDate(last.date)+'</span>'
+        +parts+'</div>';
+    }
+  }
+
   var h='<div class="set-detail">'
     +'<div class="set-detail-hdr"><span class="set-detail-title">Sätze verfolgen</span>'
-    +'<button onclick="resetSets(\''+exId+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>';
+    +'<button onclick="resetSets(\''+exId+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>'
+    +lastBlock;
   sets.forEach(function(s,i){h+=buildSetRow(exId,i,s);});
   h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button>'
     +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+restLabel+'</button>'
