@@ -490,39 +490,19 @@ function renderExDetail(){
 
   var h='';
 
-  /* Exercise header card */
+  /* Übungsinfo-Karte */
   h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-left:4px solid '+c.m+';border-radius:var(--r);padding:14px 15px;margin-bottom:13px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
     +'<div style="font-size:18px;font-weight:700;color:var(--t0);letter-spacing:-.2px;margin-bottom:7px">'+escHtml(ex.n)+'</div>'
     +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
     +(typeof ex.s==="number"&&ex.s>1?'<span style="font-size:12px;color:var(--t2)">📋 '+ex.s+' Sätze</span>':ex.s!=="–"?'<span style="font-size:12px;color:var(--t2)">📋 '+ex.s+'×</span>':'')
     +'<span style="font-size:12px;color:var(--t2)">🔁 '+escHtml(ex.r)+'</span>'
     +(ex.p&&ex.p!=="–"?'<span style="font-size:12px;color:var(--t2)">⏱ '+escHtml(ex.p)+'</span>':'')
+    +(PR[ex.id]?'<span style="font-size:12px;color:var(--amber)">🏆 PR: '+fmtW(PR[ex.id])+' kg</span>':'')
     +'</div>'
     +(ex.tip?'<div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:8px;line-height:1.5">'+escHtml(ex.tip)+'</div>':'')
     +'</div>';
 
-  /* Weight control */
-  if(!noW){
-    h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:13px 14px;margin-bottom:13px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
-      +'<div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Arbeitsgewicht</div>'
-      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-      +'<div class="w-ctrl"><button class="w-btn" onclick="adj(\''+ex.id+'\',-1)">−</button><div class="w-mid"><input class="w-val-input" id="wv_'+ex.id+'" type="text" inputmode="decimal" autocomplete="off" value="'+fmtW(wVal)+'" onblur="setWeight(\''+ex.id+'\',this.value)" onclick="this.select()"><span class="w-unit">kg</span></div><button class="w-btn" onclick="adj(\''+ex.id+'\',1)">+</button></div>'
-      +'<div style="display:flex;flex-direction:column;gap:3px;margin-left:auto">'
-      +'<span class="w-date" id="wd_'+ex.id+'">'+dateStr+'</span>'
-      +'<span class="pr-badge" id="pr_'+ex.id+'" style="display:'+(isPR?"inline-flex":"none")+'">🏆 PR</span>'
-      +'</div></div>'
-      +'<div style="font-size:11px;color:var(--t2);margin-top:6px">Schritt: 0,5 kg · '+(PR[ex.id]?'PR: '+fmtW(PR[ex.id])+' kg':'Noch kein PR')+'</div>'
-      +'</div>';
-  }
-
-  /* Set tracking */
-  h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:13px 14px;margin-bottom:13px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-    +'<span style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Sätze verfolgen</span>'
-    +'<button onclick="resetSets(\''+ex.id+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button>'
-    +'</div>';
-
-  var sets=SESSION_SETS[ex.id]||[];
+  /* Letzte Einheit */
   var last=getLastSets(ex.id);
   var lastBlock="";
   if(last&&last.sets&&last.sets.length){
@@ -536,14 +516,21 @@ function renderExDetail(){
         +lParts+'</div>';
     }
   }
-  h+='<div class="set-detail"><div class="set-detail-hdr"><span class="set-detail-title">Sätze verfolgen</span>'
-    +'<button onclick="resetSets(\''+ex.id+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>'
-    +lastBlock;
-  h+='<div id="setrows_'+ex.id+'">';
+
+  /* Sätze verfolgen */
+  var sets=SESSION_SETS[ex.id]||[];
+  h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r);padding:13px 14px;margin-bottom:13px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<span style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Sätze verfolgen</span>'
+    +'<button onclick="resetSets(\''+ex.id+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button>'
+    +'</div>'
+    +lastBlock
+    +'<div id="setrows_'+ex.id+'">';
   sets.forEach(function(s,i){h+=buildSetRow(ex.id,i,s);});
-  h+='<button class="set-add-btn" onclick="addSet(\''+ex.id+'\')">+ Satz hinzufügen</button>'
+  h+='</div>'
+    +'<button class="set-add-btn" onclick="addSet(\''+ex.id+'\')">+ Satz hinzufügen</button>'
     +'<button onclick="startTimer('+restSec+',\'⏱ Pause\')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rs);color:var(--t1);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">⏱ Pause neu starten · '+(ex.p&&ex.p!=="–"?escHtml(ex.p):"60 s")+'</button>'
-    +'</div></div>';
+    +'</div>';
 
   /* Übung abschließen */
   var ef2=getEffDay(detailDayId),c2=C[ef2.color];
