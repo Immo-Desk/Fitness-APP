@@ -2084,6 +2084,14 @@ function delSession(date, did, btn){
   twoStep(btn, function(){
     SESSIONS=SESSIONS.filter(function(s){return!(s.d===date&&s.did===did);});
     sv(SK_SESS,SESSIONS);
+    /* Auch aus Firestore löschen damit Feed + Rangliste aktualisiert werden */
+    if(currentUser){
+      try{
+        db.collection("users").doc(currentUser.uid)
+          .collection("sessions").doc(date+"_"+did)
+          .delete().catch(function(){});
+      }catch(e){}
+    }
     renderStats();toast("↺ Training entfernt");
   });
 }
@@ -2091,6 +2099,17 @@ function delSession(date, did, btn){
 function doReset(){
   var btn=event.currentTarget||event.target;
   twoStep(btn, function(){
+    /* Firestore Sessions löschen */
+    if(currentUser){
+      try{
+        db.collection("users").doc(currentUser.uid).collection("sessions").get()
+          .then(function(snap){
+            var batch=db.batch();
+            snap.docs.forEach(function(d){batch.delete(d.ref);});
+            return batch.commit();
+          }).catch(function(){});
+      }catch(e){}
+    }
     W={};PR={};EX={};HIST={};BW=[];SESSIONS=[];
     try{[SK_W,SK_PR,SK_EX,SK_HIST,SK_BW,SK_SESS].forEach(function(k){localStorage.removeItem(k);});}catch(e){}
     for(var i=0;i<DAYS.length;i++) initDay(DAYS[i].id);
