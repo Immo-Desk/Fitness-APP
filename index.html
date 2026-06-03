@@ -791,14 +791,22 @@ function removeFriend(fUid,btn){
   });
 }
 
-function sendHighFive(fUid,sessionD,sessionDid){
+function sendReaction(fUid,sessionD,sessionDid,emoji){
   if(!currentUser||!userProfile)return;
   var key=sessionD+"_"+sessionDid;
   var reaction={};
-  reaction["reactions."+currentUser.uid]={emoji:"👊",from:userProfile.username};
+  reaction["reactions."+currentUser.uid]={emoji:emoji,from:userProfile.username};
   db.collection("users").doc(fUid).collection("sessions").doc(key).update(reaction).then(function(){
-    toast("👊 High-Five!");loadFeed();
+    toast(emoji+" Reaktion gesendet!");loadFeed();
   }).catch(function(){toast("Fehler beim Senden");});
+}
+
+function timeSinceStr(dateStr){
+  var d=new Date(dateStr),now=new Date(),diff=Math.floor((now-d)/60000);
+  if(diff<60)return"vor "+diff+" Min.";
+  if(diff<1440)return"vor "+Math.floor(diff/60)+" Std.";
+  if(diff<2880)return"Gestern";
+  return"vor "+Math.floor(diff/1440)+" Tagen";
 }
 
 function timeSince(dateStr){
@@ -821,19 +829,35 @@ function renderFriends(){
     else if(!friendsLoaded&&!friends.length){h+='<div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Lade…</div>';}
     else if(friendsLoaded&&!friends.length){h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Noch keine Freunde.<br>Suche jemanden unter 🔍 Suchen.</div>';}
     else if(!feedLoaded){h+='<div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Feed wird geladen…</div>';}
-    else if(!feedItems.length){h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Noch keine Aktivitäten.</div>';}
     else{
-      feedItems.slice(0,30).forEach(function(item){
-        var rCount=Object.keys(item.reactions||{}).length;
-        var myHF=item.reactions&&currentUser&&item.reactions[currentUser.uid];
-        h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-left:4px solid '+escHtml(item.fColor)+';border-radius:var(--r);padding:13px 14px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,30,0.65)">'
-          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-          +'<div style="width:38px;height:38px;border-radius:50%;background:'+escHtml(item.fColor)+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+escHtml(item.fEmoji)+'</div>'
-          +'<div style="flex:1"><span style="font-size:14px;font-weight:600;color:var(--t0)">'+escHtml(item.fName)+'</span> <span style="font-size:12px;color:var(--t2)">hat trainiert</span><br>'
-          +'<span style="font-size:12px;color:var(--blue)">'+escHtml(item.title||"Training")+'</span> <span style="font-size:11px;color:var(--t2)">· '+fmtDate(item.d)+'</span></div></div>'
-          +'<button onclick="sendHighFive(\''+item.fUid+'\',\''+item.d+'\',\''+item.did+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid '+(myHF?"var(--amber-b)":"var(--b1)")+';border-radius:99px;background:'+(myHF?"var(--amber-bg)":"var(--bg3)")+';color:'+(myHF?"var(--amber)":"var(--t1)")+';font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">👊'+(rCount?' '+rCount:'')+'</button>'
-          +'</div>';
-      });
+      var cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
+      var cutoffStr=cutoff.toISOString().slice(0,10);
+      var visItems=feedItems.filter(function(item){return item.d>=cutoffStr;});
+      if(!visItems.length){
+        h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Keine Aktivitäten der letzten 7 Tage.<br><span style="font-size:11px;opacity:.7">Ältere Einträge werden automatisch ausgeblendet.</span></div>';
+      } else {
+        var REACTIONS=[{e:"👊",l:"High-Five"},{e:"🔥",l:"Feuer"},{e:"💪",l:"Stark"},{e:"👏",l:"Applaus"}];
+        visItems.slice(0,30).forEach(function(item){
+          var reactions=item.reactions||{};
+          var myReaction=currentUser&&reactions[currentUser.uid]?reactions[currentUser.uid].emoji:null;
+          var grouped={};
+          Object.values(reactions).forEach(function(r){if(r.emoji)grouped[r.emoji]=(grouped[r.emoji]||0)+1;});
+          var rTotal=Object.keys(reactions).length;
+          h+='<div style="background:var(--bg2);border:1px solid var(--b0);border-left:4px solid '+escHtml(item.fColor)+';border-radius:var(--r);padding:13px 14px;margin-bottom:10px;box-shadow:0 4px 20px rgba(0,0,0,0.5)">'
+            +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+            +'<div style="width:38px;height:38px;border-radius:50%;background:'+escHtml(item.fColor)+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+escHtml(item.fEmoji)+'</div>'
+            +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t0)">'+escHtml(item.fName)+'</div>'
+            +'<div style="font-size:12px;color:var(--t2);margin-top:1px">'+timeSinceStr(item.d)+'</div></div></div>'
+            +'<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg3);border-radius:var(--rs);margin-bottom:10px">'
+            +'<div style="font-size:20px">'+getSessionIcon(item.did)+'</div>'
+            +'<div><div style="font-size:13px;font-weight:600;color:var(--t0)">'+escHtml(item.title||"Training")+'</div>'
+            +'<div style="font-size:11px;color:var(--t2)">'+item.d.split("-").reverse().join(".")+'</div></div></div>'
+            +(rTotal>0?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+Object.keys(grouped).map(function(e){return'<span style="padding:3px 8px;border-radius:99px;background:var(--bg3);border:1px solid var(--b1);font-size:12px">'+e+' '+grouped[e]+'</span>';}).join('')+'</div>':'')+
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+            +REACTIONS.map(function(r){var ismine=myReaction===r.e;return'<button onclick="sendReaction(\''+item.fUid+'\',\''+item.d+'\',\''+item.did+'\',\''+r.e+'\')" style="padding:6px 11px;border:1px solid '+(ismine?"var(--blue-b)":"var(--b1)")+';border-radius:99px;background:'+(ismine?"var(--blue-bg)":"var(--bg3)")+';color:'+(ismine?"var(--blue)":"var(--t1)")+';font-size:13px;font-family:inherit;cursor:pointer">'+r.e+'</button>';}).join('')
+            +'</div></div>';
+        });
+      }
     }
   }
 
@@ -1596,7 +1620,18 @@ function getStreak(){
 function getNextDay(){
   var vd=getVisibleDays(); if(!vd.length)return null;
   if(!SESSIONS.length)return vd[0];
-  var lastDid=SESSIONS[SESSIONS.length-1].did;
+
+  /* Nur Plan-Sessions berücksichtigen (keine Sportarten wie Fußball etc.) */
+  var planSess=SESSIONS.filter(function(s){
+    return s.did&&!s.did.startsWith("sport_");
+  });
+  if(!planSess.length)return vd[0];
+
+  /* Neuestes Training nach Datum finden – nicht nach Array-Position */
+  var sorted=planSess.slice().sort(function(a,b){return b.d.localeCompare(a.d);});
+  var lastDid=sorted[0].did;
+
+  /* Position im sichtbaren Plan finden → nächsten Tag zurückgeben */
   var idx=-1;
   for(var i=0;i<vd.length;i++){if(vd[i].id===lastDid){idx=i;break;}}
   if(idx===-1)return vd[0];
