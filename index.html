@@ -609,6 +609,19 @@ function buildSetDetail(exId,ex){
   return h;
 }
 function buildSetRow(exId,i,s){
+  var ex=findExById(exId);
+  var isTimed=ex&&ex.timed;
+
+  if(isTimed){
+    var durSec=parseRestSec(ex.r);
+    return '<div id="sr_'+exId+'_'+i+'" class="set-row'+(s.done?" done":"")+'">'
+      +'<span class="set-num">'+(i+1)+'</span>'
+      +'<span style="font-size:13px;color:var(--t1);flex:1">'+escHtml(ex.r||"")+'</span>'
+      +'<button onclick="startTimer('+durSec+',\'⏱ Satz '+(i+1)+'\')" style="padding:6px 13px;background:var(--bg3);border:1px solid var(--b1);border-radius:99px;color:var(--t1);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">▶ Start</button>'
+      +'<button class="set-done-btn'+(s.done?" done":"")+'" id="sd_'+exId+'_'+i+'" onclick="toggleSetDone(\''+exId+'\','+i+')">'+(s.done?"✓":"")+'</button>'
+      +'</div>';
+  }
+
   return '<div id="sr_'+exId+'_'+i+'" class="set-row'+(s.done?" done":"")+'">'
     +'<span class="set-num">'+(i+1)+'</span>'
     +'<input id="sw_'+exId+'_'+i+'" class="set-inp" type="text" inputmode="decimal" autocomplete="off" value="'+escHtml(String(s.w))+'" style="width:52px" onclick="this.select()" onblur="saveSetW(\''+exId+'\','+i+',this.value)">'
@@ -629,41 +642,41 @@ function toggleSetDone(exId,i){
   if(row)row.classList.toggle("done",SESSION_SETS[exId][i].done);
   if(btn){btn.classList.toggle("done",SESSION_SETS[exId][i].done);btn.textContent=SESSION_SETS[exId][i].done?"✓":"";}
 
-  /* Gewicht speichern wenn Satz abgehakt wird */
+  /* Gewicht speichern wenn Satz abgehakt wird – nicht bei zeitbasierten Übungen */
   if(SESSION_SETS[exId][i].done){
-    var wRaw=parseFloat(String(SESSION_SETS[exId][i].w).replace(",","."));
-    if(!isNaN(wRaw)&&wRaw>0){
-      var today=new Date().toISOString().slice(0,10);
-      var isPR=!PR[exId]||wRaw>PR[exId];
-      if(isPR){PR[exId]=wRaw;sv(SK_PR,PR);}
-      W[exId]={w:wRaw,d:today};
-      sv(SK_W,W);
-      if(!HIST[exId])HIST[exId]=[];
-      var lh=HIST[exId][HIST[exId].length-1];
-      if(!lh||lh.d!==today){HIST[exId].push({w:wRaw,d:today});sv(SK_HIST,HIST);}
-      var wInp=document.getElementById("wv_"+exId);
-      if(wInp)wInp.value=fmtW(wRaw);
-      var wDate=document.getElementById("wd_"+exId);
-      if(wDate)wDate.textContent=fmtDate(today);
-      var prBadge=document.getElementById("pr_"+exId);
-      if(prBadge)prBadge.style.display=isPR?"inline-flex":"none";
-      if(isPR)toast("🏆 Neuer PR! "+fmtW(wRaw)+" kg");
-      var logKey=exId+"|"+today;
-      SETLOG[logKey]=SESSION_SETS[exId].map(function(s){return{w:s.w,r:s.r,done:s.done};});
-      sv(SK_SETLOG,SETLOG);
+    var ex=findExById(exId);
+    var isTimed=ex&&ex.timed;
+
+    if(!isTimed){
+      var wRaw=parseFloat(String(SESSION_SETS[exId][i].w).replace(",","."));
+      if(!isNaN(wRaw)&&wRaw>0){
+        var today=new Date().toISOString().slice(0,10);
+        var isPR=!PR[exId]||wRaw>PR[exId];
+        if(isPR){PR[exId]=wRaw;sv(SK_PR,PR);}
+        W[exId]={w:wRaw,d:today};
+        sv(SK_W,W);
+        if(!HIST[exId])HIST[exId]=[];
+        var lh=HIST[exId][HIST[exId].length-1];
+        if(!lh||lh.d!==today){HIST[exId].push({w:wRaw,d:today});sv(SK_HIST,HIST);}
+        var wInp=document.getElementById("wv_"+exId);
+        if(wInp)wInp.value=fmtW(wRaw);
+        var wDate=document.getElementById("wd_"+exId);
+        if(wDate)wDate.textContent=fmtDate(today);
+        var prBadge=document.getElementById("pr_"+exId);
+        if(prBadge)prBadge.style.display=isPR?"inline-flex":"none";
+        if(isPR)toast("🏆 Neuer PR! "+fmtW(wRaw)+" kg");
+        var logKey=exId+"|"+today;
+        SETLOG[logKey]=SESSION_SETS[exId].map(function(s){return{w:s.w,r:s.r,done:s.done};});
+        sv(SK_SETLOG,SETLOG);
+      }
     }
 
-    /* ── Pausentimer automatisch starten ── */
-    var ex=findExById(exId);
-    var restSec=ex?parseRestSec(ex.p):60;
-    /* Prüfen ob noch weitere Sätze offen sind */
+    /* Pausentimer automatisch starten */
+    var restSec2=ex?parseRestSec(ex.p):60;
     var remaining=SESSION_SETS[exId].filter(function(s){return!s.done;}).length;
-    if(remaining>0){
-      startTimer(restSec,"⏱ Pause vor Satz "+(SESSION_SETS[exId].length-remaining+1));
-    }
+    if(remaining>0) startTimer(restSec2,"⏱ Pause vor Satz "+(SESSION_SETS[exId].length-remaining+1));
 
   } else {
-    /* Satz wieder aufgehoben → Timer stoppen */
     stopTimer();
   }
 }
@@ -1052,7 +1065,7 @@ var TEMPLATES=[
       {n:"Einarmiges KH-Rudern",s:3,r:"10–12",p:"75 s",bw:false,tip:"Schulterblatt aktiv bewegen"},
       {n:"Schulterdrücken KH",s:3,r:"10–12",p:"75 s",bw:false,tip:"Stehend oder sitzend"},
       {n:"Bizeps Curls KH",s:3,r:"12–15",p:"60 s",bw:false,tip:"Kein Körperschwung"},
-      {n:"Plank",s:3,r:"30–45 s",p:"45 s",bw:true,tip:"Hüfte nicht absinken lassen"},
+      {n:"Plank",s:3,r:"30–45 s",p:"45 s",bw:true,timed:true,tip:"Hüfte nicht absinken lassen"},
     ]},
     {id:"td_bg_b",title:"Ganzkörper B",sub:"Oberkörper-Fokus",type:"strength",color:"green",icon:"🌱",note:"Zweite Einheit. Variationen für neue Reize.",ex:[
       {n:"Romanian Deadlift KH",s:3,r:"10–12",p:"90 s",bw:false,tip:"Rücken gerade, Hüfte nach hinten"},
@@ -1183,14 +1196,14 @@ var TEMPLATES=[
       {n:"Pike Push-ups",s:3,r:"8–12",p:"75 s",bw:true,tip:"Hüfte hoch, V-Position"},
       {n:"Dips (Stuhllehne oder Bank)",s:3,r:"10–15",p:"75 s",bw:true,tip:"Körper aufrecht"},
       {n:"Superman (Rückenstrecker)",s:3,r:"12–15",p:"45 s",bw:true,tip:"Langsam heben und senken"},
-      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,tip:"Hüfte nicht absinken"},
+      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,timed:true,tip:"Hüfte nicht absinken"},
     ]},
     {id:"td_hw_pull",title:"Oberkörper Pull",sub:"Rücken · Bizeps",type:"strength",color:"teal",icon:"🏠",note:"Klimmzügenstange oder Tischrudern. Band-Varianten möglich.",ex:[
       {n:"Klimmzüge (oder Tischrudern)",s:4,r:"5–10",p:"90 s",bw:true,tip:"Volle Bewegungsamplitude"},
       {n:"Inverted Rows (Tischrudern)",s:3,r:"10–15",p:"75 s",bw:true,tip:"Körper flach halten"},
       {n:"Rear Delt Fly (Boden liegend)",s:3,r:"15–20",p:"60 s",bw:true,tip:"Arme leicht gebeugt"},
       {n:"Towel Curls (Tür) oder Band Curls",s:3,r:"12–15",p:"60 s",bw:true,tip:"Langsam exzentrisch"},
-      {n:"Hollow Body Hold",s:3,r:"20–30 s",p:"45 s",bw:true,tip:"Lendenwirbel flach"},
+      {n:"Hollow Body Hold",s:3,r:"20–30 s",p:"45 s",bw:true,timed:true,tip:"Lendenwirbel flach"},
       {n:"Dead Bug",s:3,r:"8–10",p:"60 s",bw:true,tip:"Rücken am Boden"},
     ]},
     {id:"td_hw_legs",title:"Unterkörper + Core",sub:"Beine · Gesäß · Rumpf",type:"strength",color:"green",icon:"🏠",note:"Hohe Wdh. für Muskelaufbau ohne Gewichte.",ex:[
@@ -1200,7 +1213,7 @@ var TEMPLATES=[
       {n:"Nordic Hamstring Curl (Sofa)",s:3,r:"5–8",p:"90 s",bw:true,tip:"Partner hält Fußgelenke"},
       {n:"Wadenheben (BW, einbeinig)",s:4,r:"20–25",p:"45 s",bw:true,tip:"Mehr Intensität"},
       {n:"Mountain Climbers",s:3,r:"20/Seite",p:"45 s",bw:true,tip:"Core aktiv, Hüfte stabil"},
-      {n:"Side Plank",s:3,r:"30 s/Seite",p:"45 s",bw:true,tip:"Hüfte oben halten"},
+      {n:"Side Plank",s:3,r:"30 s/Seite",p:"45 s",bw:true,timed:true,tip:"Hüfte oben halten"},
     ]},
   ]},
   {id:"powerlifting",name:"Kraft-Fokus",desc:"4×/Woche auf Kniebeuge, Bankdrücken und Kreuzheben. Maximale Kraftentwicklung im Big-3.",icon:"⚡",level:"Fortgeschritten",levelCol:"#ff6e5c",days:"4×/Woche",
@@ -1227,7 +1240,7 @@ var TEMPLATES=[
       {n:"T-Bar Row",s:3,r:"8–10",p:"2 min",bw:false,tip:"Rücken-Zubehör"},
       {n:"Klimmzüge",s:3,r:"8–10",p:"2 min",bw:true,tip:"Lat-Breite"},
       {n:"KH Curls alternierend",s:3,r:"10–12",p:"60 s",bw:false,tip:"Bizeps"},
-      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,tip:"Core-Stabilität"},
+      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,timed:true,tip:"Core-Stabilität"},
     ]},
     {id:"td_pl_ohp",title:"Overhead Press",sub:"Schulter · Trizeps · Rücken",type:"strength",color:"purple",icon:"⚡",note:"OHP als Hauptübung. Komplette Schulter- und Trizepsarbeit.",ex:[
       {n:"Overhead Press LH (stehend)",s:5,r:"3–5",p:"3–4 min",bw:false,tip:"Kern anspannen, keine Hüfte"},
@@ -1262,7 +1275,7 @@ var TEMPLATES=[
       {n:"Beinstrecker (Maschine)",s:3,r:"12–15",p:"75 s",bw:false,tip:"Oben kurz anhalten für Quad-Kontraktion"},
       {n:"Beinbeuger (Maschine)",s:3,r:"12–15",p:"75 s",bw:false,tip:"Kontrolliert absenken, volle ROM"},
       {n:"Crunches Weighted",s:3,r:"12–15",p:"60 s",bw:false,tip:"Gewichtsscheibe auf der Brust halten"},
-      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,tip:"Hüfte nicht absinken, Körper gerade"},
+      {n:"Plank",s:3,r:"45–60 s",p:"45 s",bw:true,timed:true,tip:"Hüfte nicht absinken, Körper gerade"},
       {n:"Wadenheben stehend",s:4,r:"12–15",p:"60 s",bw:false,tip:"Volle Bewegungsamplitude, kurz oben halten"},
     ]},
   ]},
