@@ -802,11 +802,11 @@ function sendReaction(fUid,sessionD,sessionDid,emoji){
 }
 
 function timeSinceStr(dateStr){
-  var d=new Date(dateStr),now=new Date(),diff=Math.floor((now-d)/60000);
-  if(diff<60)return"vor "+diff+" Min.";
-  if(diff<1440)return"vor "+Math.floor(diff/60)+" Std.";
-  if(diff<2880)return"Gestern";
-  return"vor "+Math.floor(diff/1440)+" Tagen";
+  var today=new Date().toISOString().slice(0,10);
+  if(dateStr===today)return"Heute";
+  var d=new Date(dateStr),now=new Date(),diff=Math.floor((now-d)/86400000);
+  if(diff===1)return"Gestern";
+  return"vor "+diff+" Tagen";
 }
 
 function timeSince(dateStr){
@@ -830,11 +830,10 @@ function renderFriends(){
     else if(friendsLoaded&&!friends.length){h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Noch keine Freunde.<br>Suche jemanden unter 🔍 Suchen.</div>';}
     else if(!feedLoaded){h+='<div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Feed wird geladen…</div>';}
     else{
-      var cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
-      var cutoffStr=cutoff.toISOString().slice(0,10);
-      var visItems=feedItems.filter(function(item){return item.d>=cutoffStr;});
+      var todayStr=new Date().toISOString().slice(0,10);
+      var visItems=feedItems.filter(function(item){return item.d===todayStr;});
       if(!visItems.length){
-        h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Keine Aktivitäten der letzten 7 Tage.<br><span style="font-size:11px;opacity:.7">Ältere Einträge werden automatisch ausgeblendet.</span></div>';
+        h+='<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px;background:var(--bg2);border:1px solid var(--b0);border-radius:var(--r)">Heute noch keine Aktivitäten.<br><span style="font-size:11px;opacity:.7">Der Feed zeigt nur Trainings von heute.</span></div>';
       } else {
         var REACTIONS=[{e:"👊",l:"High-Five"},{e:"🔥",l:"Feuer"},{e:"💪",l:"Stark"},{e:"👏",l:"Applaus"}];
         visItems.slice(0,30).forEach(function(item){
