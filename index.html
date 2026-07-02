@@ -525,6 +525,7 @@ function renderExDetail(){
     +'<button onclick="resetSets(\''+ex.id+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button>'
     +'</div>'
     +lastBlock
+    +buildSuggestionBlock(ex.id,ex)
     +'<div id="setrows_'+ex.id+'">';
   sets.forEach(function(s,i){h+=buildSetRow(ex.id,i,s);});
   h+='</div>'
@@ -578,6 +579,84 @@ function getLastSets(exId){
   return {sets:SETLOG[keys[0]], date:keys[0].replace(prefix,"")};
 }
 
+/* Unterkörper-Erkennung über Übungsnamen */
+function isLowerBody(name){
+  if(!name)return false;
+  var n=name.toLowerCase();
+  var kws=["squat","kniebeuge","kreuzheben","deadlift","beinpresse","leg press","beinbeuger","beinstrecker","leg curl","leg extension","wade","calf","ausfallschritt","lunge","hip thrust","hüftheben","rdl","romanian","good morning","bein"];
+  return kws.some(function(k){return n.indexOf(k)>-1;});
+}
+
+/* Wdh-Zielbereich parsen: "8–12" → {lo:8, hi:12} */
+function parseRepRange(r){
+  if(!r)return null;
+  var m=String(r).match(/(\d+)\s*[–-]\s*(\d+)/);
+  if(m)return {lo:parseInt(m[1]),hi:parseInt(m[2])};
+  var single=String(r).match(/(\d+)/);
+  if(single)return {lo:parseInt(single[1]),hi:parseInt(single[1])};
+  return null;
+}
+
+/* Progressive-Overload-Vorschlag berechnen */
+function getProgressionSuggestion(exId,ex){
+  var last=getLastSets(exId);
+  if(!last||!last.sets)return null;
+  var doneSets=last.sets.filter(function(s){return s.done&&s.w&&s.w!=="0";});
+  if(!doneSets.length)return null;
+
+  var range=parseRepRange(ex.r);
+  if(!range)return null;
+
+  /* Höchstes verwendetes Gewicht der letzten Einheit */
+  var lastW=Math.max.apply(null,doneSets.map(function(s){return parseFloat(String(s.w).replace(",","."))||0;}));
+  if(lastW<=0)return null;
+
+  /* Alle Sätze im oberen Wdh-Bereich? */
+  var allHitTop=doneSets.every(function(s){
+    var reps=parseInt(String(s.r).match(/\d+/))||0;
+    return reps>=range.hi;
+  });
+
+  var step=isLowerBody(ex.n)?5:2.5;
+
+  if(allHitTop){
+    /* Gewicht erhöhen, Wdh auf unteres Ende */
+    return {w:lastW+step, r:range.lo, reason:"Alle Sätze im oberen Bereich – Zeit für mehr Gewicht! 💪"};
+  } else {
+    /* Gleiches Gewicht, eine Wdh mehr anstreben (max oberes Ende) */
+    var lastReps=Math.max.apply(null,doneSets.map(function(s){return parseInt(String(s.r).match(/\d+/))||0;}));
+    var targetReps=Math.min(range.hi,lastReps+1);
+    return {w:lastW, r:targetReps, reason:"Steigere die Wiederholungen bei gleichem Gewicht."};
+  }
+}
+
+/* Vorschlag in alle Satzfelder übernehmen */
+function applySuggestion(exId,w,r){
+  if(!SESSION_SETS[exId])return;
+  SESSION_SETS[exId].forEach(function(s){s.w=fmtW(w);s.r=String(r);});
+  rebuildSetRows(exId);
+  toast("✓ Vorschlag übernommen");
+}
+
+function buildSuggestionBlock(exId,ex){
+  if(ex&&ex.timed)return "";
+  if(ex&&ex.bw)return "";
+  var last=getLastSets(exId);
+  if(!last){
+    return '<div style="padding:9px 11px;background:var(--bg3);border-radius:var(--rs);margin-bottom:8px;font-size:12px;color:var(--t2);text-align:center">💡 Trage dein erstes Training ein für Vorschläge</div>';
+  }
+  var sug=getProgressionSuggestion(exId,ex);
+  if(!sug)return "";
+  return '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:var(--rs);margin-bottom:8px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+    +'<span style="font-size:16px">🎯</span>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--blue)">Vorschlag: '+fmtW(sug.w)+' kg × '+sug.r+'</span>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--t1);margin-bottom:8px;line-height:1.4">'+sug.reason+'</div>'
+    +'<button onclick="applySuggestion(\''+exId+'\','+sug.w+','+sug.r+')" style="width:100%;padding:8px;background:var(--blue);border:none;border-radius:var(--rs);color:#000;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">Übernehmen</button>'
+    +'</div>';
+}
+
 function buildSetDetail(exId,ex){
   var sets=SESSION_SETS[exId]||[];
   var restSec=parseRestSec(ex.p);
@@ -601,6 +680,7 @@ function buildSetDetail(exId,ex){
   var h='<div class="set-detail">'
     +'<div class="set-detail-hdr"><span class="set-detail-title">Sätze verfolgen</span>'
     +'<button onclick="resetSets(\''+exId+'\')" style="font-size:11px;color:var(--t2);background:none;border:none;cursor:pointer">↺ Zurücksetzen</button></div>'
+    +buildSuggestionBlock(exId,ex)
     +lastBlock;
   sets.forEach(function(s,i){h+=buildSetRow(exId,i,s);});
   h+='<button class="set-add-btn" onclick="addSet(\''+exId+'\')">+ Satz hinzufügen</button>'
