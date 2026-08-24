@@ -1443,6 +1443,39 @@ var TEMPLATES=[
       {n:"Cool-down (Dehnen & Atmung)",s:1,r:"5 min",p:"–",bw:true,timed:true,tip:"Ruhig ausatmen, Muskeln lockern"},
     ]},
   ]},
+  {id:"leanathletic",name:"Lean Athletic",desc:"4×/Woche – ausgewogener Muskelaufbau + Konditionierung im athletischen Stil (inspiriert vom lean-athletischen Look). Zwei Aufbau-Tage mit geraden Sätzen, zwei Tage mit Zirkel & Conditioning. Eigengewicht, Kurzhanteln, Kettlebell, Ringe/TRX.",icon:"🕷️",level:"Fortgeschritten",levelCol:"#ff6e5c",days:"4×/Woche",
+   days_data:[
+    {id:"td_la_upper",title:"Oberkörper · Aufbau",sub:"Gerade Sätze · Hypertrophie",type:"strength",color:"coral",icon:"💪",note:"Gerade Sätze nahe ans Muskelversagen – das ist der eigentliche Aufbau-Reiz. Saubere Technik vor mehr Gewicht.",ex:[
+      {n:"Klimmzüge (Ringe/Stange)",s:4,r:"6–10",p:"2 min",bw:true,tip:"Volle Amplitude, kontrolliert ablassen. Rückfall: Australian Rows"},
+      {n:"Dips (Ringe/Barren)",s:4,r:"8–12",p:"90 s",bw:true,tip:"Schultern unten halten, nicht zu tief"},
+      {n:"Kurzhantel-Schrägbankdrücken",s:3,r:"8–12",p:"90 s",bw:false,tip:"Bank ca. 30°, Ellbogen leicht eingedreht"},
+      {n:"Ring-/TRX-Rudern",s:3,r:"10–12",p:"75 s",bw:true,tip:"Körper gerade, Schulterblätter zusammenziehen"},
+      {n:"Kurzhantel-Schulterdrücken",s:3,r:"8–12",p:"75 s",bw:false,tip:"Rumpf fest, nicht ins Hohlkreuz gehen"},
+      {n:"Bizeps Kurzhantel-Curls",s:3,r:"10–12",p:"60 s",bw:false,tip:"Oben kurz halten, langsam absenken"},
+    ]},
+    {id:"td_la_lower",title:"Unterkörper · Aufbau",sub:"Gerade Sätze · Hypertrophie",type:"strength",color:"green",icon:"🦵",note:"Einbeinige und beidbeinige Arbeit kombiniert. Volle Bewegungsamplitude für maximalen Reiz.",ex:[
+      {n:"Ausfallschritte rückwärts (KH)",s:4,r:"8–10/Bein",p:"90 s",bw:false,tip:"Knieschonend – Kraft aus dem vorderen Bein"},
+      {n:"Goblet Squat (KB/KH)",s:4,r:"10–12",p:"90 s",bw:false,tip:"Aufrechter Oberkörper, tief in die Hocke"},
+      {n:"Hip Thrust (KH/LH)",s:3,r:"10–12",p:"90 s",bw:false,tip:"Oben Gesäß voll anspannen, kurz halten"},
+      {n:"Nordic Curls / Slider Leg Curls",s:3,r:"6–8",p:"90 s",bw:true,tip:"Einstieg: an Bank/Slider assistiert, langsam exzentrisch"},
+      {n:"Kettlebell Swing",s:3,r:"15",p:"75 s",bw:false,tip:"Kraft aus der Hüfte, nicht aus den Armen"},
+      {n:"Wadenheben einbeinig",s:4,r:"12–15",p:"45 s",bw:true,tip:"Volle Amplitude, oben kurz halten"},
+    ]},
+    {id:"td_la_circuit",title:"Ganzkörper-Zirkel",sub:"Gepaart · athletisch",type:"strength",color:"teal",icon:"🔄",note:"4–5 Runden. 30 s zwischen den Übungen, 2 min zwischen den Runden. Gepaart: hintere Kette + horizontal, vordere Beine + vertikal.",ex:[
+      {n:"Kettlebell Swing (hintere Kette)",s:4,r:"10",p:"30 s",bw:false,tip:"Explosiv aus der Hüfte"},
+      {n:"Ring-/Liegestütze (horizontal Druck)",s:4,r:"12",p:"30 s",bw:true,tip:"Körper in einer Linie, Rumpf fest"},
+      {n:"Ring-/TRX-Rudern (horizontal Zug)",s:4,r:"12",p:"30 s",bw:true,tip:"Schulterblätter aktiv zusammenziehen"},
+      {n:"Goblet Squat / Ausfallschritte (vordere Beine)",s:4,r:"12",p:"30 s",bw:false,tip:"Kontrolliert, saubere Kniebahn"},
+      {n:"Pike Push-ups / KH-Schulterdrücken (vertikal Druck)",s:4,r:"10",p:"30 s",bw:true,tip:"Hüfte hoch, Kopf zwischen die Arme"},
+      {n:"Klimmzüge (vertikal Zug)",s:4,r:"8",p:"2 min",bw:true,tip:"Rundenende – dann 2 min Pause"},
+    ]},
+    {id:"td_la_cond",title:"Conditioning & Core",sub:"AMRAP · Core · Mobility",type:"cardio",color:"blue",icon:"🔥",note:"Der athletische Finisher-Tag. Cindy-AMRAP als Herzstück, danach Kettlebell-Kondition, Core und Mobility.",cardio:{hf:"Zirkel/AMRAP hoch",ziel:"20–30 min",typ:"Conditioning",schritte:"–"},ex:[
+      {n:"„Cindy\"-AMRAP (15–20 min)",s:1,r:"15–20 min",p:"–",bw:true,timed:true,tip:"So viele Runden wie möglich: 5 Klimmzüge · 10 Liegestütze · 15 Kniebeugen. Tempo wählen, das du durchhältst"},
+      {n:"Kettlebell-Conditioning (Swings & Snatches)",s:3,r:"20",p:"60 s",bw:false,tip:"Sauberer Rhythmus, explosiv aus der Hüfte"},
+      {n:"Core-Zirkel (Leg Raises · Hollow · L-Sit)",s:3,r:"je 30–45 s",p:"45 s",bw:true,timed:true,tip:"Lendenwirbel flach, Rumpf durchgehend fest"},
+      {n:"Mobility-Abschluss",s:1,r:"5–10 min",p:"–",bw:true,timed:true,tip:"Hüfte, Schultern, Brustwirbelsäule mobilisieren"},
+    ]},
+  ]},
 ];
 
 function applyTemplate(tmplId,btn){
